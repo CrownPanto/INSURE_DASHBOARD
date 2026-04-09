@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+data/insurance_terms/
+*.pyc
+__pycache__/
+.idea/
+.DS_Store
