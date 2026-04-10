@@ -109,6 +109,30 @@ def show_page(session, selected_ym):
     st.title("🎯 맞춤 보험 시뮬레이터")
     st.caption("고객 유형에 맞는 최적의 보장 설계를 시뮬레이션 하세요.")
 
+    # ─── 사용 가이드 ───
+    with st.expander("📖 이 페이지는 어떻게 사용하나요? (처음이시라면 클릭!)"):
+        st.markdown("""
+        **동산보험**이란, 집 안의 **가전제품·전자기기·가구 등 물건(동산)**이 화재·도난·파손으로 손해를 입었을 때 보상해주는 보험입니다.
+
+        ---
+        **시뮬레이터 사용 순서**
+
+        1. **고객 프로필 선택** — 나와 비슷한 유형의 고객 카드를 고르세요.
+        2. **보장 품목 선택** — 보험에 포함할 물건 종류를 체크하세요. 많이 체크할수록 보험료가 올라갑니다.
+        3. **산출 결과 확인** — 예상 월 보험료와 리스크 분석 결과를 오른쪽에서 확인하세요.
+
+        ---
+        **용어 설명**
+
+        | 용어 | 설명 |
+        |------|------|
+        | 기본 보험료 | 살고 있는 동네의 위험도 + 가구 유형에 따라 결정되는 기본 금액 |
+        | 품목 가산 | 선택한 물건들의 가치와 파손 확률을 반영한 추가 금액 |
+        | 리스크 점수 | 거주 지역의 화재·도난·건물 위험도를 0~10점으로 환산한 수치 |
+        | 부담상한 | 보험료가 월 소득의 2%를 넘지 않도록 자동으로 조정하는 제도 |
+        | 보장한도(Limit) | 사고 발생 시 해당 품목에 대해 최대 보상받을 수 있는 금액 |
+        """)
+
     # ─── 2. 캐릭터 프로필 선택 (카드 UI) ───
     st.subheader("고객 프로필 선택")
     p_cols = st.columns(4)
@@ -174,12 +198,12 @@ def show_page(session, selected_ym):
             </div>
         """, unsafe_allow_html=True)
 
-        # 2. 보장 품목 라이브러리 (체크박스 위 안내문구 흰색)
+        # 2. 보장 품목 라이브러리
         st.markdown(
             '<p style="color: #FFFFFF !important; font-size: 1.3rem; font-weight: 700; margin-bottom: 5px;">📚 보장 품목 라이브러리</p>',
             unsafe_allow_html=True)
         st.markdown(
-            '<p style="color: #D1D5DB !important; font-size: 0.95rem; margin-bottom: 20px;">보험료에 영향을 미치는 동산 품목을 선택하세요.</p>',
+            '<p style="color: #D1D5DB !important; font-size: 0.95rem; margin-bottom: 5px;">보험에 포함할 물건 종류를 선택하세요. 체크할수록 보장이 넓어지지만 보험료도 올라갑니다.</p>',
             unsafe_allow_html=True)
 
         item_keys = list(utils.COVERAGE_ITEMS.keys())
@@ -192,11 +216,15 @@ def show_page(session, selected_ym):
                 if i + j < len(item_keys):
                     name = item_keys[i + j]
                     info = utils.COVERAGE_ITEMS[name]
+                    monthly_cost = info["limit"] * info["damage_rate"] / 12
                     with cols[j]:
-                        # 스트림릿 기본 체크박스 텍스트는 시스템 설정을 따르므로,
-                        # 가독성을 위해 key를 명확히 하고 UI를 유지합니다.
-                        if st.checkbox(f"{info['icon']} {name}", value=(name in sel["default_items"]),
-                                       key=f"final_chk_{name}"):
+                        checked = st.checkbox(
+                            f"{info['icon']} {name}",
+                            value=(name in sel["default_items"]),
+                            key=f"final_chk_{name}",
+                            help=f"보장한도 ₩{info['limit']:,.0f} | 월 +₩{monthly_cost:,.0f} 추가 | 예: {info['examples']}"
+                        )
+                        if checked:
                             selected_items.append(name)
 
         st.markdown('<div style="margin: 30px 0;"></div>', unsafe_allow_html=True)
@@ -233,11 +261,15 @@ def show_page(session, selected_ym):
                            selected_items=selected_items)
 
         # 가격 강조 박스
+        monthly_income_display = sel["income"] * 1_000_000 / 12
+        cap_amount = monthly_income_display * 0.02
+        capped_msg = f'<div style="background:rgba(251,191,36,0.15); border:1px solid #F59E0B; border-radius:8px; padding:8px 12px; margin-top:12px; font-size:0.82rem; color:#FCD34D; text-align:left;">⚠️ <b>부담상한 적용</b> — 원래 보험료(₩{res["total_with_items"]:,.0f})가 월소득의 2%(₩{cap_amount:,.0f})를 초과해 자동으로 낮아졌어요.</div>' if res['capped'] else ''
         st.markdown(f"""
             <div style="background: linear-gradient(135deg, #475569 0%, #1e293b 100%); border: 2px solid #FFFFFF; padding: 25px; border-radius: 15px; text-align: center; margin-bottom: 20px;">
-                <div style="color: rgba(255,255,255,0.8); font-size: 1rem; margin-bottom: 5px;">최종 월 보험료</div>
+                <div style="color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-bottom: 4px;">매달 내는 보험료</div>
                 <div style="color: white; font-size: 2.5rem; font-weight: 800;">₩{res['final']:,.0f}</div>
-                {'<div style="background:rgba(255,255,255,0.2); border-radius:5px; padding:3px; margin-top:10px; font-size:0.8rem; color:white;">⚠️ 부담상한 적용됨</div>' if res['capped'] else ''}
+                <div style="color: rgba(255,255,255,0.5); font-size: 0.78rem; margin-top:4px;">하루 ₩{res['final']/30:,.0f} 수준</div>
+                {capped_msg}
             </div>
         """, unsafe_allow_html=True)
 
@@ -374,6 +406,20 @@ def show_page(session, selected_ym):
             cost = ci["limit"] * ci["damage_rate"] / 12
             item_costs.append({"name": f"{ci['icon']} {it}", "cost": cost})
         item_costs.sort(key=lambda x: x["cost"], reverse=True)
+
+        # ── 한 줄 인사이트 요약 ──
+        if risk < 3:
+            risk_plain = "비교적 안전한 지역에 거주 중이에요."
+        elif risk < 6:
+            risk_plain = "보통 수준의 위험 지역이에요. 기본 보장이면 충분할 수 있어요."
+        else:
+            risk_plain = "위험도가 높은 지역이에요. 보장 범위를 넓히는 걸 권장해요."
+
+        top_item = item_costs[0]["name"] if item_costs else None
+        item_plain = f"선택한 품목 중 **{top_item}** 이 보험료에 가장 큰 영향을 줬어요." if top_item else "선택한 품목이 없어요."
+        burden_plain = "소득 대비 보험료 부담이 매우 낮은 편이에요 ✅" if burden_pct < 1 else ("적정 수준의 부담이에요." if burden_pct < 1.5 else "소득 대비 보험료가 다소 높아요. 품목을 줄여보세요.")
+
+        st.info(f"💡 **{risk_plain}** {item_plain} {burden_plain}")
 
         base      = res["segment_adjusted"]
         addon_sum = res["item_addon"]
