@@ -9,32 +9,5 @@
     <file url="file://$PROJECT_DIR$/sql/06_DBT_MART.sql" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/sql/08_CORTEX_ML_LLM.sql" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/sql/09_EXTERNAL_STAGE_SNOWPIPE.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/10_FIX_MART_GU_JOIN.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/11_GRANTS.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/12_FIX_GU_COVERAGE_AND_RISK.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/13_V1.2_IMPROVEMENTS.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/14_V1.3_ENHANCEMENTS.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/15_V1.4_DATA_SUPPLEMENT.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/16_V1.4_ACTUARIAL_PREMIUM.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/17_V1.4_FEEDBACK_REDESIGN.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/18_V1.4_STREAMLIT_DEPLOY.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/19_V1.5_PERSONA_SEGMENT.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/20_V1.5_SNOWFLAKE_FEATURES.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/21_V1.5_EXTERNAL_DATA.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/22_V1.5_CORTEX_ANALYST_AGENT.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/23_V1.5_STREAMLIT_DEPLOY.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/24_V1.6_AUTOMATION.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/25_V1.6_SECURITY.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/26_V1.6_MONITORING.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/27_V1.6_STREAMLIT_DEPLOY.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/28_V2.0_ASSET_CATEGORY_TABLES.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/30_RAG_SCHEMA.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/31_RAG_INSERT.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/32_RAG_EMBEDDING.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/33_RAG_SEARCH_TEST.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/34_GRAPH_RAG_SCHEMA.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/35_GRAPH_RAG_NODES.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/36_GRAPH_RAG_EDGES.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/sql/37_GRAPH_RAG_SEARCH.sql" dialect="GenericSQL" />
   </component>
 </project>

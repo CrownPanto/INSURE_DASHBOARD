@@ -363,39 +363,59 @@ def show_page(session, selected_ym):
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ─── 6-2. 히트맵 → 구별 위험도·보험료 랭킹 바차트 ───
+    # ─── 6-2. 구별 위험도 & 보험료 비교 (horizontal bar) ───
     st.subheader("구별 위험도 & 보험료 한눈에 비교")
-    st.caption("위험도 순 정렬 | 막대 = 보험료, 색상 = 위험도")
+    st.caption("보험료 순 정렬 | 파란선 = 서울 평균 | 색상 = 위험도")
 
-    sorted_risk = agg_df.sort_values("COMPOSITE_RISK_SCORE", ascending=True)
+    # outlier 제외한 24개 구 표시, 서초구 별도 안내
+    Q3_bar = agg_df["ADJUSTED_PREMIUM_MONTHLY"].quantile(0.75)
+    IQR_bar = Q3_bar - agg_df["ADJUSTED_PREMIUM_MONTHLY"].quantile(0.25)
+    cutoff = Q3_bar + 1.5 * IQR_bar
+
+    df_bar   = agg_df[agg_df["ADJUSTED_PREMIUM_MONTHLY"] <= cutoff].sort_values("ADJUSTED_PREMIUM_MONTHLY", ascending=True)
+    df_over  = agg_df[agg_df["ADJUSTED_PREMIUM_MONTHLY"] >  cutoff]
+
+    # 이상치 안내 박스
+    if len(df_over) > 0:
+        names = ", ".join(df_over["GU_NAME"].tolist())
+        vals  = ", ".join([f"₩{v:,.0f}" for v in df_over["ADJUSTED_PREMIUM_MONTHLY"]])
+        st.info(f"⚠️ **이상치 제외** — {names} ({vals}) 는 차트에서 제외됩니다 (별도 구간)")
+
+    # 색상: 위험도 기반
+    norm = df_bar["COMPOSITE_RISK_SCORE"]
+    r_min, r_max = norm.min(), norm.max()
+    def risk_to_color(v):
+        t = (v - r_min) / (r_max - r_min) if r_max > r_min else 0.5
+        if t < 0.33: return "#10b981"
+        if t < 0.66: return "#f59e0b"
+        return "#ef4444"
+    colors = [risk_to_color(v) for v in df_bar["COMPOSITE_RISK_SCORE"]]
 
     fig_bar = go.Figure()
     fig_bar.add_trace(go.Bar(
-        x=sorted_risk["GU_NAME"],
-        y=sorted_risk["ADJUSTED_PREMIUM_MONTHLY"],
-        marker=dict(
-            color=sorted_risk["COMPOSITE_RISK_SCORE"],
-            colorscale=[[0,"#10b981"],[0.5,"#f59e0b"],[1,"#ef4444"]],
-            colorbar=dict(title="위험도", thickness=12),
-            line=dict(width=0),
-        ),
-        text=[f"₩{v:,.0f}" for v in sorted_risk["ADJUSTED_PREMIUM_MONTHLY"]],
+        y=df_bar["GU_NAME"],
+        x=df_bar["ADJUSTED_PREMIUM_MONTHLY"],
+        orientation="h",
+        marker=dict(color=colors, line=dict(width=0)),
+        text=[f"₩{v:,.0f}" for v in df_bar["ADJUSTED_PREMIUM_MONTHLY"]],
         textposition="outside",
-        textfont=dict(size=9, color="#94a3b8"),
-        hovertemplate="<b>%{x}</b><br>월보험료: ₩%{y:,.0f}<br><extra></extra>",
+        textfont=dict(size=10, color="#e2e8f0"),
+        hovertemplate="<b>%{y}</b><br>월보험료: ₩%{x:,.0f}<br><extra></extra>",
     ))
-    fig_bar.add_hline(y=avg_premium, line_dash="dot", line_color="#6366f1",
+    fig_bar.add_vline(x=avg_premium, line_dash="dot", line_color="#6366f1", line_width=2,
                       annotation_text=f"평균 ₩{avg_premium:,.0f}",
-                      annotation_font=dict(color="#818cf8", size=10),
-                      annotation_position="right")
+                      annotation_font=dict(color="#a5b4fc", size=10),
+                      annotation_position="top")
+
     fig_bar.update_layout(
-        height=420, plot_bgcolor="#0f1117", paper_bgcolor="#0f1117",
+        height=max(400, len(df_bar) * 28),
+        plot_bgcolor="#0f1117", paper_bgcolor="#0f1117",
         font=dict(color="#f1f5f9", size=10),
-        xaxis=dict(title="← 저위험                                              고위험 →",
-                   tickangle=-35, title_font=dict(color="#94a3b8")),
-        yaxis=dict(title="월 보험료 (원)", title_font=dict(color="#94a3b8")),
+        xaxis=dict(title="월 보험료 (원)", title_font=dict(color="#94a3b8"),
+                   tickformat=",", gridcolor="rgba(255,255,255,0.05)"),
+        yaxis=dict(title="", tickfont=dict(size=11)),
         showlegend=False,
-        margin=dict(t=20, b=80),
+        margin=dict(t=20, l=80, r=100, b=40),
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
@@ -403,16 +423,64 @@ def show_page(session, selected_ym):
 
     # ─── 7. 영등포 vs 서초 비교 (성혁님 v3 기능 유지 ㅡㅡ+) ───
     st.subheader("같은 보험, 다른 가격 — 왜?")
+    st.caption("동일한 보장 내용이라도 지역 위험도에 따라 보험료가 달라집니다")
+
     comp_cols = st.columns(2)
-    for idx, gu_name in enumerate(["영등포구", "서초구"]):
+    gu_styles = [
+        ("영등포구", "#ef4444", "rgba(239,68,68,0.12)", "rgba(239,68,68,0.4)"),
+        ("서초구",   "#6366f1", "rgba(99,102,241,0.12)", "rgba(99,102,241,0.4)"),
+    ]
+
+    for (gu_name, accent, bg, border), col in zip(gu_styles, comp_cols):
         row = agg_df[agg_df["GU_NAME"] == gu_name]
-        if not row.empty:
-            r = row.iloc[0]
-            with comp_cols[idx]:
-                st.markdown(f"#### {gu_name}")
-                st.metric("월보험료", f"₩{r['ADJUSTED_PREMIUM_MONTHLY']:,.0f}")
-                st.metric("위험도", f"{r['COMPOSITE_RISK_SCORE']:.1f}점")
-                st.caption(f"화재 {r['FIRE_RISK_SCORE']:.0f} | 도난 {r['THEFT_RISK_SCORE']:.0f} | 건물 {r['BUILDING_RISK_SCORE']:.0f} | 기상 {r['WEATHER_RISK_SCORE']:.0f}")
+        if row.empty:
+            continue
+        r = row.iloc[0]
+        diff_pct = (r["ADJUSTED_PREMIUM_MONTHLY"] - avg_premium) / avg_premium * 100
+        diff_txt = f"+{diff_pct:.0f}%" if diff_pct >= 0 else f"{diff_pct:.0f}%"
+        max_risk_val = 50
+
+        def bar_html(icon, label, val, ac):
+            w = int(min(val / max_risk_val * 100, 100))
+            return (
+                f'<div style="margin-bottom:8px;">'
+                f'<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
+                f'<span style="font-size:11px;color:#000000;">{icon} {label}</span>'
+                f'<span style="font-size:11px;font-weight:700;color:#000000;">{val:.0f}점</span>'
+                f'</div>'
+                f'<div style="background:rgba(0,0,0,0.08);border-radius:4px;height:6px;">'
+                f'<div style="background:{ac};width:{w}%;height:6px;border-radius:4px;opacity:0.8;"></div>'
+                f'</div></div>'
+            )
+
+        bars = (
+            bar_html("🔥", "화재 위험", r["FIRE_RISK_SCORE"],     accent) +
+            bar_html("🔓", "도난 위험", r["THEFT_RISK_SCORE"],    accent) +
+            bar_html("🏚", "건물 노후", r["BUILDING_RISK_SCORE"], accent) +
+            bar_html("🌧", "기상 위험", r["WEATHER_RISK_SCORE"],  accent)
+        )
+
+        card = f"""
+        <div style="background:{bg};border:1.5px solid {border};border-radius:16px;padding:24px 28px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                <span style="font-size:22px;font-weight:800;color:#000000;">📍 {gu_name}</span>
+                <span style="font-size:12px;font-weight:700;color:#000000;background:rgba(0,0,0,0.08);padding:4px 10px;border-radius:20px;">평균 대비 {diff_txt}</span>
+            </div>
+            <div style="margin-bottom:16px;">
+                <div style="font-size:11px;color:#555555;font-weight:600;margin-bottom:4px;">💰 월 보험료</div>
+                <div style="font-size:34px;font-weight:900;color:{accent};line-height:1.1;">₩{r['ADJUSTED_PREMIUM_MONTHLY']:,.0f}</div>
+            </div>
+            <div style="margin-bottom:20px;">
+                <div style="font-size:11px;color:#555555;font-weight:600;margin-bottom:4px;">⚠️ 종합 위험도</div>
+                <div style="font-size:26px;font-weight:800;color:#000000;">{r['COMPOSITE_RISK_SCORE']:.1f}<span style="font-size:14px;color:#666;">점</span></div>
+            </div>
+            <div style="font-size:11px;color:#444444;font-weight:600;margin-bottom:10px;">📊 위험 요소 분석</div>
+            {bars}
+        </div>
+        """
+
+        with col:
+            st.markdown(card, unsafe_allow_html=True)
 
     # ─── 8. 전체 데이터 테이블 ───
     with st.expander("전체 25개 구 데이터 보기"):
