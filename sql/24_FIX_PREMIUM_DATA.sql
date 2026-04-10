@@ -117,28 +117,31 @@ real_data AS (
     GROUP BY m.DISTRICT_CODE, dm.DISTRICT_KOR_NAME, COALESCE(g.GU_NAME, dm.CITY_KOR_NAME), m.YEAR_MONTH
 ),
 
--- (B) 서울 전체 통계 (missing 구 대체용)
+-- (B) 서울 전체 통계 — YEAR_MONTH별 평균 (missing 구 대체용)
+-- ★ FIX: 전체 평균이 아닌 월별 평균으로 계산해야 다른 달도 올바른 값 사용
 seoul_avg AS (
-    SELECT
+    SELECT YEAR_MONTH,
         AVG(DISTRICT_AVG_INCOME) AS avg_income,
         AVG(DISTRICT_AVG_ASSET) AS avg_asset,
         AVG(AVG_MOVABLE_ASSET) AS avg_movable,
-        MEDIAN(AVG_BASE_PREMIUM) AS avg_premium,   -- ★ MEDIAN
+        MEDIAN(AVG_BASE_PREMIUM) AS avg_premium,
         AVG(AVG_CREDIT_SCORE) AS avg_credit
     FROM real_data
+    GROUP BY YEAR_MONTH
 ),
 
 -- (C) 실제 데이터가 있는 구 목록
 covered_gu AS (SELECT DISTINCT GU_NAME FROM real_data WHERE GU_NAME IS NOT NULL),
 
--- (D) 누락된 구 처리 (서울 25개 구 중 real_data에 없는 것)
+-- (D) 누락된 구 처리 — ★ FIX: '202512' 하드코딩 제거, 모든 YEAR_MONTH에 대해 생성
 missing_gu AS (
-    SELECT g.GU_NAME, '202512' AS YEAR_MONTH
+    SELECT g.GU_NAME, ym.YEAR_MONTH
     FROM INSURE_DB.STAGING.GU_CODE_MAPPING g
+    CROSS JOIN (SELECT DISTINCT YEAR_MONTH FROM real_data) ym
     WHERE g.GU_NAME NOT IN (SELECT GU_NAME FROM covered_gu)
 ),
 
--- (E) 누락 구에 대한 추정 데이터 (서울 평균 기반)
+-- (E) 누락 구에 대한 추정 데이터 (해당 월 서울 평균 기반)
 estimated_data AS (
     SELECT
         NULL AS DISTRICT_CODE,
@@ -153,7 +156,8 @@ estimated_data AS (
         sa.avg_premium AS AVG_BASE_PREMIUM,
         sa.avg_credit AS AVG_CREDIT_SCORE
     FROM missing_gu mg
-    CROSS JOIN seoul_avg sa
+    -- ★ FIX: CROSS JOIN → YEAR_MONTH 기준 JOIN (월별 서울 평균 사용)
+    JOIN seoul_avg sa ON mg.YEAR_MONTH = sa.YEAR_MONTH
     LEFT JOIN (
         SELECT dm.CITY_KOR_NAME AS GU_NAME, COUNT(DISTINCT dm.DISTRICT_CODE) * 8500 AS EST_POPULATION
         FROM INSURE_DB.STAGING.STG_DISTRICT_MASTER dm
@@ -201,12 +205,13 @@ seoul_apt_avg AS (
     FROM INSURE_DB.STAGING.STG_APT_PRICE
 ),
 
--- (I) ★ 핵심 수정: 보험료 IQR 기반 상한/하한 계산
+-- (I) 보험료 IQR 기반 상한/하한 — ★ FIX: YEAR_MONTH별로 계산
 premium_bounds AS (
-    SELECT
+    SELECT YEAR_MONTH,
         PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY d.AVG_BASE_PREMIUM) AS q1,
         PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY d.AVG_BASE_PREMIUM) AS q3
     FROM all_districts d
+    GROUP BY YEAR_MONTH
 ),
 
 -- (J) 최종 조합
@@ -244,7 +249,8 @@ assembled AS (
     LEFT JOIN latest_risk lr ON TRIM(d.GU_NAME) = lr.DISTRICT_NAME
     LEFT JOIN apt_price ap ON TRIM(d.GU_NAME) = TRIM(ap.GU_NAME)
     CROSS JOIN seoul_apt_avg sa
-    CROSS JOIN premium_bounds pb
+    -- ★ FIX: CROSS JOIN → YEAR_MONTH 기준 JOIN (월별 IQR 적용)
+    JOIN premium_bounds pb ON d.YEAR_MONTH = pb.YEAR_MONTH
     WHERE d.GU_NAME IS NOT NULL
 )
 SELECT * FROM assembled;
