@@ -1,0 +1,12 @@
+streamlit==1.54.0
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+st-gsheets-connection
+openpyxl
+streamlit-aggrid
+streamlit_extras
+extra_streamlit_components
+streamlit_authenticator
