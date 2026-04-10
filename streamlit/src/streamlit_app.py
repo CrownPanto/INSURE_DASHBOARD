@@ -61,21 +61,21 @@ Snowflake Hackathon 2025Q2
 
 # ─── 라우팅 ───
 if page == "📊 메인 대시보드":
-    page_module = load_page("src/01_Firstpage/first_page.py")
+    page_module = load_page("streamlit/src/01_Firstpage/first_page.py")
     page_module.show_page(session, selected_month)
 
 elif page == "👤 세그먼트 상세":
-    page_module = load_page("src/02_Secondpage/second_page.py")
+    page_module = load_page("streamlit/src/02_Secondpage/second_page.py")
     page_module.show_page(session, selected_month)
 
 elif page == "⚠️ 리스크 분석":
-    page_module = load_page("src/03_Thirdpage/third_page.py")
+    page_module = load_page("streamlit/src/03_Thirdpage/third_page.py")
     page_module.show_page(session, selected_month)
 
 elif page == "💬 상담 관리":
-    page_module = load_page("src/04_Fourthpage/fourth_page.py")
+    page_module = load_page("streamlit/src/04_Fourthpage/fourth_page.py")
     page_module.show_page(session, selected_month)
 
 elif page == "💰 보험료 시뮬레이터":
-    page_module = load_page("src/05_Fifthpage/fifth_page.py")
+    page_module = load_page("streamlit/src/05_Fifthpage/fifth_page.py")
     page_module.show_page(session, selected_month)
