@@ -1,0 +1,421 @@
+# ============================================================
+# INSURE Cortex Analyst Semantic Model
+# 동산보험 동적 설계 데이터 엔진
+# 자연어 질의로 보험 설계 인사이트 추출
+# ============================================================
+
+name: insure_insurance_design
+description: >
+  서울시 25개 구, 118개 동 기준 동산보험 동적 설계 시맨틱 모델.
+  세그먼트 분류, 리스크 스코어, 보험료 산출, 크로스셀 기회 분석을
+  자연어 질의로 수행할 수 있습니다.
+
+tables:
+
+  # ─── 핵심 팩트: 자산/소득 정보 ───
+  - name: asset_income
+    description: >
+      서울시 118개 동별, 월별, 성별, 연령대별 소득/자산/신용/소비 정보.
+      INSURE 세그먼트 분류의 핵심 데이터 소스.
+    base_table:
+      database: INSURE_DB
+      schema: STAGING
+      table: STG_ASSET_INCOME
+
+    dimensions:
+      - name: district_code
+        description: 행정동 코드 (7자리)
+        expr: DISTRICT_CODE
+        data_type: VARCHAR
+        sample_values: ["1168010","1150010","1104055"]
+
+      - name: year_month
+        description: 기준 년월 (YYYYMM 형식)
+        expr: STANDARD_YEAR_MONTH
+        data_type: VARCHAR
+        sample_values: ["202301","202406","202112"]
+
+      - name: gender
+        description: 성별 (M=남성, F=여성)
+        expr: GENDER
+        data_type: VARCHAR
+        sample_values: ["M","F"]
+
+      - name: age_group
+        description: 연령대 그룹
+        expr: AGE_GROUP
+        data_type: VARCHAR
+        sample_values: ["20_24","30_34","50_54","65_69"]
+
+    measures:
+      - name: population
+        description: 해당 그룹 고객수
+        expr: SUM(CUSTOMER_COUNT)
+        data_type: NUMBER
+
+      - name: avg_income
+        description: 중위소득 (원)
+        expr: AVG(MEDIAN_INCOME)
+        data_type: NUMBER
+
+      - name: avg_asset
+        description: 평균 자산액 (원)
+        expr: AVG(AVERAGE_ASSET_AMOUNT)
+        data_type: NUMBER
+
+      - name: avg_credit_score
+        description: 평균 신용점수
+        expr: AVG(AVERAGE_SCORE)
+        data_type: NUMBER
+
+      - name: high_credit_rate
+        description: 신용 상위(1등급) 비율
+        expr: AVG(RATE_SCORE1)
+        data_type: NUMBER
+
+      - name: low_credit_rate
+        description: 신용 하위(3등급) 비율
+        expr: AVG(RATE_SCORE3)
+        data_type: NUMBER
+
+      - name: total_delinquent
+        description: 30일 이상 연체 건수 합계
+        expr: SUM(DELINQUENT30_COUNT)
+        data_type: NUMBER
+
+      - name: avg_spend
+        description: 평균 카드 사용액 (원)
+        expr: AVG(TOTAL_USAGE_AMOUNT)
+        data_type: NUMBER
+
+      - name: avg_abroad_spend
+        description: 평균 해외 사용액 (원)
+        expr: AVG(AVERAGE_ABROAD_AMOUNT)
+        data_type: NUMBER
+
+      - name: avg_installment
+        description: 평균 할부 사용액 (원)
+        expr: AVG(AVERAGE_INSTALLMENT_USAGE_AMOUNT)
+        data_type: NUMBER
+
+      - name: homeowner_count
+        description: 자가주택 보유 건수
+        expr: SUM(OWN_HOUSING_COUNT)
+        data_type: NUMBER
+
+      - name: multi_housing_count
+        description: 다주택 보유 건수
+        expr: SUM(MULTIPLE_HOUSING_COUNT)
+        data_type: NUMBER
+
+      - name: high_end_rate
+        description: 고소득자(7천만 이상) 비율
+        expr: AVG(RATE_INCOME_OVER_70M)
+        data_type: NUMBER
+
+      - name: small_unit_ratio
+        description: 소형(20평 미만) 비율
+        expr: SUM(PYEONG_UNDER_20_COUNT) / NULLIF(SUM(PYEONG_UNDER_20_COUNT + PYEONG_OVER_20_COUNT), 0)
+        data_type: NUMBER
+
+      - name: estimated_movable_asset
+        description: 추정 동산 가치 (원) = 자산*0.15 + 소득*0.08 + 할부*24
+        expr: AVG(AVERAGE_ASSET_AMOUNT) * 0.15 + AVG(MEDIAN_INCOME) * 0.08 + AVG(AVERAGE_INSTALLMENT_USAGE_AMOUNT) * 24
+        data_type: NUMBER
+
+  # ─── 보험 설계 마트 ───
+  - name: insurance_design
+    description: >
+      세그먼트별 × 구별 동적 보험 설계안.
+      추정 동산가치, 기본 보험료, 추천 보장항목 포함.
+    base_table:
+      database: INSURE_DB
+      schema: MART
+      table: MART_INSURANCE_DESIGN
+
+    dimensions:
+      - name: district_code
+        expr: DISTRICT_CODE
+        data_type: VARCHAR
+
+      - name: year_month
+        expr: YEAR_MONTH
+        data_type: VARCHAR
+
+      - name: segment_lifecycle
+        description: 생애주기 세그먼트 (A1~A6)
+        expr: SEGMENT_A
+        data_type: VARCHAR
+        sample_values: ["A1_사회초년생","A3_영유아가구","A5_중년안정","A6_은퇴시니어"]
+
+      - name: segment_asset
+        description: 자산/소비 세그먼트 (B1~B5)
+        expr: SEGMENT_B
+        data_type: VARCHAR
+        sample_values: ["B1_영리치","B2_알뜰형","B3_투자적극형","B5_소비과다형"]
+
+      - name: segment_housing
+        description: 주거환경 세그먼트 (C1~C4)
+        expr: SEGMENT_C
+        data_type: VARCHAR
+        sample_values: ["C1_신축대형","C4_오피스텔원룸","C3_중형아파트"]
+
+      - name: segment_job
+        description: 직업/활동 세그먼트 (D1~D3)
+        expr: SEGMENT_D
+        data_type: VARCHAR
+
+      - name: segment_risk
+        description: 리스크 프로파일 (E1~E3)
+        expr: SEGMENT_E
+        data_type: VARCHAR
+        sample_values: ["E1_저위험안정","E2_중위험표준","E3_고위험집중"]
+
+      - name: composite_segment
+        description: 복합 세그먼트 코드 (A|B|C 조합)
+        expr: COMPOSITE_SEGMENT
+        data_type: VARCHAR
+
+      - name: recommended_coverage
+        description: 추천 보장 항목
+        expr: RECOMMENDED_COVERAGE
+        data_type: VARCHAR
+
+      - name: cross_sell
+        description: 크로스셀 추천 유형
+        expr: CROSS_SELL_RECOMMENDATION
+        data_type: VARCHAR
+
+    measures:
+      - name: segment_population
+        description: 세그먼트 인구수
+        expr: SUM(POPULATION)
+        data_type: NUMBER
+
+      - name: avg_movable_asset
+        description: 평균 추정 동산 가치
+        expr: AVG(ESTIMATED_MOVABLE_ASSET_VALUE)
+        data_type: NUMBER
+
+      - name: avg_premium
+        description: 평균 월 보험료
+        expr: AVG(BASE_PREMIUM_MONTHLY)
+        data_type: NUMBER
+
+      - name: avg_credit_adjustment
+        description: 평균 신용 보정 계수
+        expr: AVG(CREDIT_ADJUSTMENT)
+        data_type: NUMBER
+
+  # ─── 구별 리스크 스코어 ───
+  - name: district_risk
+    description: >
+      구별 복합 리스크 스코어 (화재+범죄+건물노후+기상+소방).
+      보험료 지역 가중치 산출의 근거.
+    base_table:
+      database: INSURE_DB
+      schema: INTERMEDIATE
+      table: INT_DISTRICT_RISK_SCORE
+
+    dimensions:
+      - name: district_name
+        description: 자치구명
+        expr: DISTRICT_NAME
+        data_type: VARCHAR
+        sample_values: ["강남구","영등포구","노원구","종로구"]
+
+      - name: year
+        expr: YEAR
+        data_type: NUMBER
+
+      - name: risk_grade
+        description: 리스크 등급 (고위험/중위험/저위험)
+        expr: RISK_GRADE
+        data_type: VARCHAR
+
+    measures:
+      - name: composite_risk
+        description: 복합 리스크 점수 (0~100)
+        expr: AVG(COMPOSITE_RISK_SCORE)
+        data_type: NUMBER
+
+      - name: fire_risk
+        description: 화재 리스크 점수
+        expr: AVG(FIRE_RISK_SCORE)
+        data_type: NUMBER
+
+      - name: theft_risk
+        description: 도난 리스크 점수
+        expr: AVG(THEFT_RISK_SCORE)
+        data_type: NUMBER
+
+      - name: building_risk
+        description: 건물 노후 리스크 점수
+        expr: AVG(BUILDING_RISK_SCORE)
+        data_type: NUMBER
+
+      - name: weather_risk
+        description: 기상 리스크 점수
+        expr: AVG(WEATHER_RISK_SCORE)
+        data_type: NUMBER
+
+      - name: safety_score
+        description: 안전 인프라 점수 (감점 요소)
+        expr: AVG(SAFETY_INFRA_SCORE)
+        data_type: NUMBER
+
+  # ─── 구별 보험 요약 ───
+  - name: district_summary
+    description: >
+      구별 보험 설계 종합 요약. 대시보드 메인 뷰.
+      최종 조정 보험료와 추정 시장 규모 포함.
+    base_table:
+      database: INSURE_DB
+      schema: MART
+      table: MART_DISTRICT_INSURANCE_SUMMARY
+
+    dimensions:
+      - name: district_code
+        expr: DISTRICT_CODE
+        data_type: VARCHAR
+
+      - name: district_name
+        description: 자치구명
+        expr: DISTRICT_NAME
+        data_type: VARCHAR
+
+      - name: year_month
+        expr: YEAR_MONTH
+        data_type: VARCHAR
+
+      - name: risk_grade
+        expr: RISK_GRADE
+        data_type: VARCHAR
+
+    measures:
+      - name: total_population
+        expr: SUM(TOTAL_POPULATION)
+        data_type: NUMBER
+
+      - name: active_segments
+        description: 활성 세그먼트 수
+        expr: AVG(ACTIVE_SEGMENTS)
+        data_type: NUMBER
+
+      - name: avg_movable_asset
+        description: 평균 동산 가치
+        expr: AVG(AVG_MOVABLE_ASSET)
+        data_type: NUMBER
+
+      - name: adjusted_premium
+        description: 최종 조정 월보험료
+        expr: AVG(ADJUSTED_PREMIUM_MONTHLY)
+        data_type: NUMBER
+
+      - name: annual_market_size
+        description: 연간 추정 보험 시장 규모
+        expr: SUM(ESTIMATED_ANNUAL_MARKET_KRW)
+        data_type: NUMBER
+
+      - name: avg_credit_score
+        expr: AVG(AVG_CREDIT_SCORE)
+        data_type: NUMBER
+
+  # ─── 이사 신호 ───
+  - name: moving_signal
+    description: >
+      구별 월별 이사 신호 감지.
+      부동산 거래 증감률과 이사 신호 강도 포함.
+    base_table:
+      database: INSURE_DB
+      schema: INTERMEDIATE
+      table: INT_MOVING_SIGNAL
+
+    dimensions:
+      - name: district_name
+        expr: DISTRICT_NAME
+        data_type: VARCHAR
+
+      - name: year_month
+        expr: YEAR_MONTH
+        data_type: VARCHAR
+
+      - name: moving_status
+        description: 이사 시장 상태 (급변동/활발/안정)
+        expr: MOVING_STATUS
+        data_type: VARCHAR
+
+    measures:
+      - name: total_transactions
+        expr: SUM(TOTAL_TRANSACTIONS)
+        data_type: NUMBER
+
+      - name: moving_signal_score
+        description: 이사 신호 강도 (0~100)
+        expr: AVG(MOVING_SIGNAL_SCORE)
+        data_type: NUMBER
+
+      - name: tx_growth_rate
+        description: 거래 증감률 (%)
+        expr: AVG(TX_GROWTH_RATE)
+        data_type: NUMBER
+
+# ─── 자연어 질의 예시 ───
+verified_queries:
+  - question: "강남구의 평균 동산 가치는 얼마인가요?"
+    sql: >
+      SELECT district_code, AVG(ESTIMATED_MOVABLE_ASSET_VALUE) as avg_asset
+      FROM INSURE_DB.MART.MART_INSURANCE_DESIGN
+      WHERE DISTRICT_CODE LIKE '1168%'
+      GROUP BY district_code
+    verified_at: "2026-04-04"
+    verified_by: "CrownPanto"
+
+  - question: "신용점수 하위 30% 비율이 가장 높은 구 Top 5는?"
+    sql: >
+      SELECT DISTRICT_CODE, AVG(RATE_SCORE3) as low_rate
+      FROM INSURE_DB.STAGING.STG_ASSET_INCOME
+      GROUP BY DISTRICT_CODE
+      ORDER BY low_rate DESC
+      LIMIT 5
+    verified_at: "2026-04-04"
+    verified_by: "CrownPanto"
+
+  - question: "고위험 등급인 구는 어디인가요?"
+    sql: >
+      SELECT DISTRICT_NAME, COMPOSITE_RISK_SCORE, RISK_GRADE
+      FROM INSURE_DB.INTERMEDIATE.INT_DISTRICT_RISK_SCORE
+      WHERE RISK_GRADE = '고위험'
+      ORDER BY COMPOSITE_RISK_SCORE DESC
+    verified_at: "2026-04-04"
+    verified_by: "CrownPanto"
+
+  - question: "사회초년생 세그먼트의 평균 보험료는?"
+    sql: >
+      SELECT SEGMENT_A, AVG(BASE_PREMIUM_MONTHLY) as avg_premium
+      FROM INSURE_DB.MART.MART_INSURANCE_DESIGN
+      WHERE SEGMENT_A = 'A1_사회초년생'
+      GROUP BY SEGMENT_A
+    verified_at: "2026-04-04"
+    verified_by: "CrownPanto"
+
+  - question: "이번 달 이사 신호가 가장 강한 구 Top 3는?"
+    sql: >
+      SELECT DISTRICT_NAME, MOVING_SIGNAL_SCORE, MOVING_STATUS
+      FROM INSURE_DB.INTERMEDIATE.INT_MOVING_SIGNAL
+      WHERE YEAR_MONTH = (SELECT MAX(YEAR_MONTH) FROM INSURE_DB.INTERMEDIATE.INT_MOVING_SIGNAL)
+      ORDER BY MOVING_SIGNAL_SCORE DESC
+      LIMIT 3
+    verified_at: "2026-04-04"
+    verified_by: "CrownPanto"
+
+  - question: "영리치 세그먼트가 가장 많이 분포한 구는?"
+    sql: >
+      SELECT DISTRICT_CODE, SUM(POPULATION) as rich_pop
+      FROM INSURE_DB.MART.MART_INSURANCE_DESIGN
+      WHERE SEGMENT_B = 'B1_영리치'
+      GROUP BY DISTRICT_CODE
+      ORDER BY rich_pop DESC
+      LIMIT 5
+    verified_at: "2026-04-04"
+    verified_by: "CrownPanto"
