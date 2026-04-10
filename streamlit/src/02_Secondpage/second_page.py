@@ -1,8 +1,8 @@
 import streamlit as st
 import plotly.graph_objects as go
-from ..utils import PRESETS, SEGMENTS_A, SEGMENTS_B, COVERAGE_ITEMS, calc_premium
+# from ..utils import PRESETS, SEGMENTS_A, SEGMENTS_B, COVERAGE_ITEMS, calc_premium
 
-
+from utils import PRESETS, SEGMENTS_A, SEGMENTS_B, COVERAGE_ITEMS, calc_premium
 def show_page(session, selected_ym):
     st.title("맞춤 보험 시뮬레이터")
     st.subheader("고객 프로필 선택")

@@ -1,6 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
-from ..utils import DISTRICT_PROFILES, DEMO_DISTRICTS
+from utils import DISTRICT_PROFILES, DEMO_DISTRICTS
 
 def show_page(session, selected_ym):
     st.title("⚙️ 엔진 상세")
