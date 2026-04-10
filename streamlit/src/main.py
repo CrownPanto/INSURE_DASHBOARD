@@ -65,14 +65,14 @@ elif page == "🎯 맞춤 보험 시뮬레이터":
     page_module = load_page("streamlit/src/02_Secondpage/second_page.py")
     page_module.show_page(session, selected_month)
 
-elif page == "⚙️ 엔진 상세":
+elif page == "💬 AI 보험 상담":
     page_module = load_page("streamlit/src/03_Thirdpage/third_page.py")
     page_module.show_page(session, selected_month)
 
-elif page == "📊 시스템 현황":
+elif page == "⚙️ 엔진 상세":
     page_module = load_page("streamlit/src/04_Fourthpage/fourth_page.py")
     page_module.show_page(session, selected_month)
 
-elif page == "💰 보험료 시뮬레이터":
+elif page == "📊 시스템 현황":
     page_module = load_page("streamlit/src/05_Fifthpage/fifth_page.py")
     page_module.show_page(session, selected_month)
