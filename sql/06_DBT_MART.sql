@@ -65,12 +65,12 @@ SELECT
           END
     , 0) AS BASE_PREMIUM_MONTHLY,
 
-    -- ★ 신용 보정 계수
+    -- ★ 신용 보정 계수 (M-3 수정: 5단계 800/700/600/500)
     CASE
-        WHEN s.AVG_CREDIT >= 850 THEN 0.85
-        WHEN s.AVG_CREDIT >= 750 THEN 0.95
-        WHEN s.AVG_CREDIT >= 650 THEN 1.00
-        WHEN s.AVG_CREDIT >= 550 THEN 1.10
+        WHEN s.AVG_CREDIT >= 800 THEN 0.85
+        WHEN s.AVG_CREDIT >= 700 THEN 0.93
+        WHEN s.AVG_CREDIT >= 600 THEN 1.00
+        WHEN s.AVG_CREDIT >= 500 THEN 1.10
         ELSE 1.25
     END AS CREDIT_ADJUSTMENT,
 

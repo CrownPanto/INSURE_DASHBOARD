@@ -19,12 +19,13 @@ WITH base AS (
 -- A그룹: 생애주기형 세그먼트
 lifecycle_segment AS (
     SELECT *,
+        -- M-1 수정: 5년 단위 비중복 경계 (기존 25_29, 35_39 등 중복 제거)
         CASE
             WHEN AGE_GROUP IN ('20_24','25_29') THEN 'A1_사회초년생'
-            WHEN AGE_GROUP IN ('25_29','30_34') AND MEDIAN_INCOME BETWEEN 25000000 AND 50000000 THEN 'A2_신혼'
-            WHEN AGE_GROUP IN ('30_34','35_39') THEN 'A3_영유아가구'
-            WHEN AGE_GROUP IN ('35_39','40_44','45_49') THEN 'A4_학령기가구'
-            WHEN AGE_GROUP IN ('45_49','50_54','55_59') THEN 'A5_중년안정'
+            WHEN AGE_GROUP IN ('30_34') THEN 'A2_신혼'
+            WHEN AGE_GROUP IN ('35_39') THEN 'A3_영유아가구'
+            WHEN AGE_GROUP IN ('40_44','45_49') THEN 'A4_학령기가구'
+            WHEN AGE_GROUP IN ('50_54','55_59') THEN 'A5_중년안정'
             WHEN AGE_GROUP IN ('60_64','65_69','70_74','75_OVER') THEN 'A6_은퇴시니어'
             ELSE 'A0_미분류'
         END AS SEGMENT_A
@@ -226,11 +227,12 @@ SELECT
     , 1) AS COMPOSITE_RISK_SCORE,
     -- 리스크 등급
     CASE
+        -- M-2 수정: 저위험 임계값 30→25
         WHEN (f.FIRE_RISK_SCORE * 0.25 + c.THEFT_RISK_SCORE * 0.25 + b.BUILDING_RISK_SCORE * 0.20
               + w.WEATHER_RISK_SCORE * 0.15 - s.SAFETY_INFRA_SCORE * 0.08 - cc.CCTV_SECURITY_SCORE * 0.07) >= 50
             THEN '고위험'
         WHEN (f.FIRE_RISK_SCORE * 0.25 + c.THEFT_RISK_SCORE * 0.25 + b.BUILDING_RISK_SCORE * 0.20
-              + w.WEATHER_RISK_SCORE * 0.15 - s.SAFETY_INFRA_SCORE * 0.08 - cc.CCTV_SECURITY_SCORE * 0.07) >= 30
+              + w.WEATHER_RISK_SCORE * 0.15 - s.SAFETY_INFRA_SCORE * 0.08 - cc.CCTV_SECURITY_SCORE * 0.07) >= 25
             THEN '중위험'
         ELSE '저위험'
     END AS RISK_GRADE
@@ -304,11 +306,12 @@ SELECT
     SUM(DELINQUENT_90_COUNT) AS TOTAL_DELINQUENT_90D,
     AVG(AVERAGE_DELINQUENT_AMOUNT) AS AVG_DELINQUENT_AMT,
     -- ★ 인사이트1: 신용점수 기반 보험료 조정 계수
+    -- M-3 수정: 5단계 신용등급 (800/700/600/500)
     CASE
-        WHEN AVG(CREDIT_SCORE_AVG) >= 850 THEN 0.85  -- 15% 할인
-        WHEN AVG(CREDIT_SCORE_AVG) >= 750 THEN 0.95  -- 5% 할인
-        WHEN AVG(CREDIT_SCORE_AVG) >= 650 THEN 1.00  -- 기본
-        WHEN AVG(CREDIT_SCORE_AVG) >= 550 THEN 1.10  -- 10% 할증
+        WHEN AVG(CREDIT_SCORE_AVG) >= 800 THEN 0.85  -- 15% 할인
+        WHEN AVG(CREDIT_SCORE_AVG) >= 700 THEN 0.93  -- 7% 할인
+        WHEN AVG(CREDIT_SCORE_AVG) >= 600 THEN 1.00  -- 기본
+        WHEN AVG(CREDIT_SCORE_AVG) >= 500 THEN 1.10  -- 10% 할증
         ELSE 1.25  -- 25% 할증
     END AS PREMIUM_CREDIT_FACTOR,
     -- ★ 인사이트2: 연체율 = 해지 리스크 프록시
@@ -428,12 +431,13 @@ SELECT f.DISTRICT_NAME, f.YEAR,
         - COALESCE(s.SAFETY_INFRA_SCORE, 0) * 0.08 - COALESCE(cc.CCTV_SECURITY_SCORE, 0) * 0.07
     , 1) AS COMPOSITE_RISK_SCORE,
     CASE
+        -- M-2 수정: 저위험 임계값 30→25
         WHEN (f.FIRE_RISK_SCORE * 0.30 + COALESCE(c.THEFT_RISK_SCORE, 0) * 0.30
               + COALESCE(b.BUILDING_RISK_SCORE, 0) * 0.15 + COALESCE(w.WEATHER_RISK_SCORE, 0) * 0.10
               - COALESCE(s.SAFETY_INFRA_SCORE, 0) * 0.08 - COALESCE(cc.CCTV_SECURITY_SCORE, 0) * 0.07) >= 50 THEN '고위험'
         WHEN (f.FIRE_RISK_SCORE * 0.30 + COALESCE(c.THEFT_RISK_SCORE, 0) * 0.30
               + COALESCE(b.BUILDING_RISK_SCORE, 0) * 0.15 + COALESCE(w.WEATHER_RISK_SCORE, 0) * 0.10
-              - COALESCE(s.SAFETY_INFRA_SCORE, 0) * 0.08 - COALESCE(cc.CCTV_SECURITY_SCORE, 0) * 0.07) >= 30 THEN '중위험'
+              - COALESCE(s.SAFETY_INFRA_SCORE, 0) * 0.08 - COALESCE(cc.CCTV_SECURITY_SCORE, 0) * 0.07) >= 25 THEN '중위험'
         ELSE '저위험'
     END AS RISK_GRADE
 FROM fire_risk f
