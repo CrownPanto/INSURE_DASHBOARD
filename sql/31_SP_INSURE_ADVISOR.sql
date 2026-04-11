@@ -34,10 +34,7 @@ EXECUTE AS CALLER
 AS
 $$
 DECLARE
-<<<<<<< HEAD
     -- 검색 결과 커서
-=======
->>>>>>> a0bbeccc38217fc6e9d37f9187a04c5784f6e749
     chunk_cursor CURSOR FOR
         SELECT
             c.CHUNK_ID,
@@ -54,17 +51,13 @@ DECLARE
         ORDER BY SIMILARITY_SCORE DESC
         LIMIT 5;
 
-<<<<<<< HEAD
     -- 변수 선언
-=======
->>>>>>> a0bbeccc38217fc6e9d37f9187a04c5784f6e749
     v_chunk_id      VARCHAR;
     v_source_file   VARCHAR;
     v_article_no    VARCHAR;
     v_article_title VARCHAR;
     v_chunk_text    VARCHAR;
     v_similarity    FLOAT;
-<<<<<<< HEAD
 
     -- 컨텍스트 조합 변수
     v_context       VARCHAR DEFAULT '';
@@ -88,18 +81,6 @@ BEGIN
     -- --------------------------------------------------------
     OPEN chunk_cursor;
 
-=======
-    v_context       VARCHAR DEFAULT '';
-    v_chunk_num     INTEGER DEFAULT 0;
-    v_prompt        VARCHAR;
-    v_response      VARCHAR;
-    v_query_embedding VECTOR(FLOAT, 768);
-
-BEGIN
-    v_query_embedding := SNOWFLAKE.CORTEX.EMBED_TEXT_768('e5-base-v2', :QUERY);
-
-    OPEN chunk_cursor;
->>>>>>> a0bbeccc38217fc6e9d37f9187a04c5784f6e749
     FOR chunk_rec IN chunk_cursor DO
         v_chunk_num := v_chunk_num + 1;
         v_context := v_context ||
@@ -109,7 +90,6 @@ BEGIN
             ' ' || COALESCE(chunk_rec.ARTICLE_TITLE, '') ||
             '\n' || chunk_rec.CHUNK_TEXT || '\n\n';
     END FOR;
-<<<<<<< HEAD
 
     CLOSE chunk_cursor;
 
@@ -121,14 +101,6 @@ BEGIN
     -- --------------------------------------------------------
     -- 3단계: 프롬프트 구성
     -- --------------------------------------------------------
-=======
-    CLOSE chunk_cursor;
-
-    IF (v_chunk_num = 0) THEN
-        RETURN '죄송합니다. 해당 질문과 관련된 약관 정보를 찾을 수 없습니다.';
-    END IF;
-
->>>>>>> a0bbeccc38217fc6e9d37f9187a04c5784f6e749
     v_prompt :=
         '당신은 INSURE 동산보험 전문 상담사입니다. ' ||
         '고객의 질문에 대해 아래의 약관 내용을 참고하여 정확하고 친절하게 답변해 주세요.\n\n' ||
@@ -138,7 +110,6 @@ BEGIN
         '3. 전문 용어는 쉬운 언어로 풀어서 설명해 주세요.\n' ||
         '4. 답변은 간결하고 명확하게 작성하세요.\n' ||
         '5. 필요시 관련 조항 번호를 명시해 주세요.\n\n' ||
-<<<<<<< HEAD
         '[약관 내용]\n' ||
         v_context ||
         '[고객 질문]\n' ||
@@ -156,17 +127,10 @@ BEGIN
     -- --------------------------------------------------------
     -- 5단계: 응답 반환
     -- --------------------------------------------------------
-=======
-        '[약관 내용]\n' || v_context ||
-        '[고객 질문]\n' || :QUERY || '\n\n[답변]';
-
-    v_response := SNOWFLAKE.CORTEX.COMPLETE('mistral-large2', v_prompt);
->>>>>>> a0bbeccc38217fc6e9d37f9187a04c5784f6e749
     RETURN v_response;
 
 EXCEPTION
     WHEN OTHER THEN
-<<<<<<< HEAD
         RETURN '오류가 발생했습니다: ' || SQLERRM ||
                '\n오류 코드: ' || SQLCODE ||
                '\n문의사항은 담당자에게 연락해 주세요.';
@@ -207,15 +171,4 @@ SHOW PROCEDURES LIKE 'SP_ASK_INSURE_ADVISOR' IN SCHEMA INSURE_DB.ANALYTICS;
 --     SUM(CASE WHEN CHUNK_EMBEDDING IS NOT NULL THEN 1 ELSE 0 END) AS EMBEDDED_CHUNKS,
 --     ROUND(100.0 * SUM(CASE WHEN CHUNK_EMBEDDING IS NOT NULL THEN 1 ELSE 0 END) / COUNT(*), 1) AS EMBEDDING_PCT
 -- FROM INSURE_DB.RAG.RAG_CHUNKS;
-=======
-        RETURN '오류가 발생했습니다: ' || SQLERRM || '\n코드: ' || SQLCODE;
-END;
-$$;
 
-SHOW PROCEDURES LIKE 'SP_ASK_INSURE_ADVISOR' IN SCHEMA INSURE_DB.ANALYTICS;
-
--- 테스트 예시
--- CALL INSURE_DB.ANALYTICS.SP_ASK_INSURE_ADVISOR('동산보험에서 화재로 인한 손해는 어떻게 보상받나요?');
--- CALL INSURE_DB.ANALYTICS.SP_ASK_INSURE_ADVISOR('보험금을 받을 수 없는 경우는?');
--- CALL INSURE_DB.ANALYTICS.SP_ASK_INSURE_ADVISOR('월 보험료는 어떻게 계산되나요?');
->>>>>>> a0bbeccc38217fc6e9d37f9187a04c5784f6e749
