@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"C:/Users/hanga/OneDrive/문서/Claude/Projects/SnowFlake 해커톤/FIX_ALL_BUGS_CONSOLIDATED.sql\" \"C:/Users/hanga/OneDrive/문서/GitHub/INSURE_DASHBOARD/sql/26_FIX_ALL_BUGS.sql\")",
+      "Bash(cp \"C:/Users/hanga/OneDrive/문서/Claude/Projects/SnowFlake 해커톤/MART_UNIFIED_DDL.sql\" \"C:/Users/hanga/OneDrive/문서/GitHub/INSURE_DASHBOARD/sql/27_MART_UNIFIED_DDL.sql\")",
+      "Bash(npm list:*)",
+      "Bash(npx --help)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(where python:*)",
+      "Bash(where conda:*)",
+      "Bash(conda --version)",
+      "Bash(where docker:*)",
+      "Bash(docker --version)",
+      "Bash(conda env:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(ls -la sql/*.sql)",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(sort -t/ -k2)",
+      "Bash(cp \"/c/Users/hanga/OneDrive/문서/Claude/Projects/SnowFlake 해커톤/[DOWNLOAD TEMPLATE] Snowflake Hackathon 2026 \\(External\\).pptx\" /tmp/template.pptx)",
+      "Read(//tmp/**)",
+      "Bash(git fetch:*)",
+      "Bash(grep -h \"^CREATE OR REPLACE\" sql/*.sql)",
+      "Bash(grep -h \"^CREATE OR REPLACE\\\\|^CREATE TABLE\\\\|^CREATE VIEW\" sql/*.sql)",
+      "Bash(git branch:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(cd \"C:\\\\\\\\Users\\\\\\\\hanga\\\\\\\\OneDrive\\\\\\\\문서\\\\\\\\GitHub\\\\\\\\INSURE_DASHBOARD\")",
+      "Bash(wc -l sql/*.sql)",
+      "Read(//c/Users/hanga/OneDrive/Desktop/김기준/Crownpanto/ai-pipeline-kit/ai-pipeline-kit/**)",
+      "Read(//c/Users/hanga/OneDrive/Desktop/김기준/Crownpanto/ai-pipeline-kit/ai-pipeline-kit/runs/latest/**)",
+      "Bash(sort -k3,3 -k1,1rn)",
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -r \"CREATE.*PROCEDURE\\\\|CREATE.*FUNCTION\" sql/*.sql)",
+      "Bash(grep -r \"CREATE TABLE\\\\|CREATE VIEW\" sql/*.sql)",
+      "Read(//c/Users/hanga/OneDrive/Desktop/김기준/SnowFlake 해커톤/발표준비/**)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\hanga\\\\OneDrive\\\\Desktop\\\\김기준\\\\SnowFlake 해커톤\\\\발표준비\")"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "snowflake"
+  ]
+}

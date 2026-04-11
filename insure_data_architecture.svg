@@ -1,0 +1,245 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 820" font-family="'Segoe UI', 'Noto Sans KR', Arial, sans-serif">
+  <defs>
+    <!-- Shadows -->
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000015"/>
+    </filter>
+    <filter id="shadowDeep" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#00000020"/>
+    </filter>
+    <!-- Gradients -->
+    <linearGradient id="gradRaw" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#818CF8"/>
+    </linearGradient>
+    <linearGradient id="gradStg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#60A5FA"/>
+    </linearGradient>
+    <linearGradient id="gradInt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0EA5E9"/>
+      <stop offset="100%" stop-color="#38BDF8"/>
+    </linearGradient>
+    <linearGradient id="gradMart" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#14B8A6"/>
+      <stop offset="100%" stop-color="#2DD4BF"/>
+    </linearGradient>
+    <linearGradient id="gradStream" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#FBBF24"/>
+    </linearGradient>
+    <linearGradient id="gradRAG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#EC4899"/>
+      <stop offset="100%" stop-color="#F472B6"/>
+    </linearGradient>
+    <linearGradient id="gradSource" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+    <!-- Arrow marker -->
+    <marker id="arrowGray" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#94A3B8"/>
+    </marker>
+    <marker id="arrowTeal" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#14B8A6"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="820" rx="16" fill="#F8FAFC"/>
+
+  <!-- Title -->
+  <text x="500" y="42" text-anchor="middle" font-size="22" font-weight="700" fill="#1E293B">INSURE 데이터 아키텍처</text>
+  <text x="500" y="64" text-anchor="middle" font-size="12" fill="#64748B">Team CrownPanto · Snowflake Hackathon 2026 — "INSURE, For Sure."</text>
+
+  <!-- Layer labels (left side) -->
+  <text x="30" y="147" font-size="10" font-weight="600" fill="#94A3B8" transform="rotate(-90 30 147)">DATA SOURCE</text>
+  <text x="30" y="290" font-size="10" font-weight="600" fill="#94A3B8" transform="rotate(-90 30 290)">RAW</text>
+  <text x="30" y="388" font-size="10" font-weight="600" fill="#94A3B8" transform="rotate(-90 30 388)">STAGING</text>
+  <text x="30" y="493" font-size="10" font-weight="600" fill="#94A3B8" transform="rotate(-90 30 493)">INTERMEDIATE</text>
+  <text x="30" y="598" font-size="10" font-weight="600" fill="#94A3B8" transform="rotate(-90 30 598)">MART</text>
+  <text x="30" y="730" font-size="10" font-weight="600" fill="#94A3B8" transform="rotate(-90 30 730)">APPLICATION</text>
+
+  <!-- Dashed layer separators -->
+  <line x1="50" y1="195" x2="960" y2="195" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="6 4"/>
+  <line x1="50" y1="298" x2="960" y2="298" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="6 4"/>
+  <line x1="50" y1="408" x2="960" y2="408" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="6 4"/>
+  <line x1="50" y1="530" x2="960" y2="530" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="6 4"/>
+  <line x1="50" y1="655" x2="960" y2="655" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="6 4"/>
+
+  <!-- ===== DATA SOURCES ===== -->
+  <!-- GRANDATA -->
+  <g filter="url(#shadow)">
+    <rect x="120" y="90" width="200" height="88" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="120" y="90" width="200" height="32" rx="12" fill="url(#gradSource)"/>
+    <rect x="120" y="110" width="200" height="12" fill="url(#gradSource)"/>
+    <text x="220" y="112" text-anchor="middle" font-size="12" font-weight="600" fill="white">GRANDATA API</text>
+    <text x="220" y="142" text-anchor="middle" font-size="11" fill="#475569">Marketplace 인구통계</text>
+    <text x="220" y="162" text-anchor="middle" font-size="10" fill="#94A3B8">서울 269K rows</text>
+  </g>
+
+  <!-- Public Data -->
+  <g filter="url(#shadow)">
+    <rect x="400" y="90" width="200" height="88" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="400" y="90" width="200" height="32" rx="12" fill="url(#gradSource)"/>
+    <rect x="400" y="110" width="200" height="12" fill="url(#gradSource)"/>
+    <text x="500" y="112" text-anchor="middle" font-size="12" font-weight="600" fill="white">공공데이터 API</text>
+    <text x="500" y="142" text-anchor="middle" font-size="11" fill="#475569">화재 · CCTV · 도난 · 침수</text>
+    <text x="500" y="162" text-anchor="middle" font-size="10" fill="#94A3B8">서울시 25개 구</text>
+  </g>
+
+  <!-- Ajungdang -->
+  <g filter="url(#shadow)">
+    <rect x="680" y="90" width="200" height="88" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="680" y="90" width="200" height="32" rx="12" fill="url(#gradSource)"/>
+    <rect x="680" y="110" width="200" height="12" fill="url(#gradSource)"/>
+    <text x="780" y="112" text-anchor="middle" font-size="12" font-weight="600" fill="white">아정당 Marketplace</text>
+    <text x="780" y="142" text-anchor="middle" font-size="11" fill="#475569">아파트 실거래 · 건물정보</text>
+    <text x="780" y="162" text-anchor="middle" font-size="10" fill="#94A3B8">Snowflake Marketplace</text>
+  </g>
+
+  <!-- Arrows: Sources → RAW -->
+  <line x1="220" y1="178" x2="380" y2="240" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+  <line x1="500" y1="178" x2="500" y2="218" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+  <line x1="780" y1="178" x2="620" y2="240" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+
+  <!-- ===== RAW LAYER ===== -->
+  <g filter="url(#shadowDeep)">
+    <rect x="310" y="218" width="380" height="64" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="310" y="218" width="380" height="30" rx="12" fill="url(#gradRaw)"/>
+    <rect x="310" y="236" width="380" height="12" fill="url(#gradRaw)"/>
+    <text x="500" y="240" text-anchor="middle" font-size="13" font-weight="600" fill="white">RAW LAYER</text>
+    <text x="500" y="265" text-anchor="middle" font-size="11" fill="#475569">GRANDATA.ASSET_INCOME_INFO  ·  PUBLIC_DATA_*</text>
+  </g>
+
+  <!-- Arrow annotation -->
+  <line x1="500" y1="282" x2="500" y2="316" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+  <rect x="530" y="288" width="140" height="18" rx="4" fill="#F1F5F9"/>
+  <text x="600" y="301" text-anchor="middle" font-size="9" fill="#64748B">컬럼 정규화 · 단위 변환</text>
+
+  <!-- ===== STAGING LAYER ===== -->
+  <g filter="url(#shadowDeep)">
+    <rect x="190" y="316" width="620" height="76" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="190" y="316" width="620" height="30" rx="12" fill="url(#gradStg)"/>
+    <rect x="190" y="334" width="620" height="12" fill="url(#gradStg)"/>
+    <text x="500" y="338" text-anchor="middle" font-size="13" font-weight="600" fill="white">STAGING LAYER  (Dynamic Tables)</text>
+    <!-- Sub items -->
+    <rect x="210" y="358" width="170" height="24" rx="6" fill="#EFF6FF"/>
+    <text x="295" y="374" text-anchor="middle" font-size="10" fill="#3B82F6">STG_ASSET_INCOME</text>
+    <rect x="395" y="358" width="190" height="24" rx="6" fill="#EFF6FF"/>
+    <text x="490" y="374" text-anchor="middle" font-size="10" fill="#3B82F6">STG_DISTRICT_MASTER</text>
+    <rect x="600" y="358" width="190" height="24" rx="6" fill="#EFF6FF"/>
+    <text x="695" y="374" text-anchor="middle" font-size="10" fill="#3B82F6">STG_APT_PRICE</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="500" y1="392" x2="500" y2="428" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+  <rect x="530" y="400" width="160" height="18" rx="4" fill="#F1F5F9"/>
+  <text x="610" y="413" text-anchor="middle" font-size="9" fill="#64748B">5차원 세그먼트 분류</text>
+
+  <!-- ===== INTERMEDIATE LAYER ===== -->
+  <g filter="url(#shadowDeep)">
+    <rect x="230" y="428" width="540" height="86" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="230" y="428" width="540" height="30" rx="12" fill="url(#gradInt)"/>
+    <rect x="230" y="446" width="540" height="12" fill="url(#gradInt)"/>
+    <text x="500" y="450" text-anchor="middle" font-size="13" font-weight="600" fill="white">INTERMEDIATE LAYER</text>
+    <rect x="255" y="470" width="230" height="28" rx="6" fill="#F0F9FF"/>
+    <text x="370" y="488" text-anchor="middle" font-size="10" fill="#0EA5E9">INT_SEGMENT_CLASSIFICATION</text>
+    <text x="370" y="502" text-anchor="middle" font-size="8" fill="#94A3B8">10개 페르소나 × 25개 구</text>
+    <rect x="510" y="470" width="235" height="28" rx="6" fill="#F0F9FF"/>
+    <text x="628" y="488" text-anchor="middle" font-size="10" fill="#0EA5E9">INT_DISTRICT_RISK_SCORE</text>
+    <text x="628" y="502" text-anchor="middle" font-size="8" fill="#94A3B8">화재·도난·침수·CCTV 가중</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="500" y1="514" x2="500" y2="550" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+  <rect x="530" y="522" width="200" height="18" rx="4" fill="#F1F5F9"/>
+  <text x="630" y="535" text-anchor="middle" font-size="9" fill="#64748B">7단계 보험료 산출 엔진</text>
+
+  <!-- ===== MART LAYER ===== -->
+  <g filter="url(#shadowDeep)">
+    <rect x="230" y="550" width="540" height="90" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="230" y="550" width="540" height="30" rx="12" fill="url(#gradMart)"/>
+    <rect x="230" y="568" width="540" height="12" fill="url(#gradMart)"/>
+    <text x="500" y="572" text-anchor="middle" font-size="13" font-weight="600" fill="white">MART LAYER</text>
+    <rect x="255" y="594" width="230" height="28" rx="6" fill="#F0FDF4"/>
+    <text x="370" y="612" text-anchor="middle" font-size="10" fill="#14B8A6">MART_INSURANCE_DESIGN</text>
+    <text x="370" y="625" text-anchor="middle" font-size="8" fill="#94A3B8">6개 자산 카테고리 보험료</text>
+    <rect x="510" y="594" width="240" height="28" rx="6" fill="#F0FDF4"/>
+    <text x="630" y="612" text-anchor="middle" font-size="10" fill="#14B8A6">MART_DISTRICT_INS_SUMMARY</text>
+    <text x="630" y="625" text-anchor="middle" font-size="8" fill="#94A3B8">25구 × 60개월 완전 커버</text>
+  </g>
+
+  <!-- Arrows: MART → Applications -->
+  <line x1="400" y1="640" x2="310" y2="680" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+  <line x1="600" y1="640" x2="700" y2="680" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+
+  <!-- ===== APPLICATION LAYER ===== -->
+  <!-- Streamlit Dashboard -->
+  <g filter="url(#shadowDeep)">
+    <rect x="100" y="680" width="360" height="118" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="100" y="680" width="360" height="30" rx="12" fill="url(#gradStream)"/>
+    <rect x="100" y="698" width="360" height="12" fill="url(#gradStream)"/>
+    <text x="280" y="700" text-anchor="middle" font-size="13" font-weight="600" fill="white">STREAMLIT DASHBOARD (5 Pages)</text>
+    <!-- Page chips -->
+    <rect x="118" y="722" width="100" height="22" rx="6" fill="#FFFBEB"/>
+    <text x="168" y="737" text-anchor="middle" font-size="9" fill="#D97706">P1 보험료 지도</text>
+    <rect x="226" y="722" width="100" height="22" rx="6" fill="#FFFBEB"/>
+    <text x="276" y="737" text-anchor="middle" font-size="9" fill="#D97706">P2 시뮬레이터</text>
+    <rect x="334" y="722" width="108" height="22" rx="6" fill="#FFFBEB"/>
+    <text x="388" y="737" text-anchor="middle" font-size="9" fill="#D97706">P3 AI 상담</text>
+
+    <rect x="118" y="752" width="100" height="22" rx="6" fill="#FFFBEB"/>
+    <text x="168" y="767" text-anchor="middle" font-size="9" fill="#D97706">P4 엔진 상세</text>
+    <rect x="226" y="752" width="110" height="22" rx="6" fill="#FFFBEB"/>
+    <text x="281" y="767" text-anchor="middle" font-size="9" fill="#D97706">P5 시스템 현황</text>
+
+    <text x="370" y="767" font-size="8" fill="#94A3B8">Plotly · GeoJSON</text>
+  </g>
+
+  <!-- Cortex RAG -->
+  <g filter="url(#shadowDeep)">
+    <rect x="540" y="680" width="360" height="118" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="540" y="680" width="360" height="30" rx="12" fill="url(#gradRAG)"/>
+    <rect x="540" y="698" width="360" height="12" fill="url(#gradRAG)"/>
+    <text x="720" y="700" text-anchor="middle" font-size="13" font-weight="600" fill="white">CORTEX AI / RAG</text>
+
+    <rect x="560" y="722" width="150" height="28" rx="6" fill="#FDF2F8"/>
+    <text x="635" y="738" text-anchor="middle" font-size="9" fill="#EC4899">Plain RAG</text>
+    <text x="635" y="748" text-anchor="middle" font-size="7" fill="#94A3B8">367청크 · EMBED_768</text>
+
+    <rect x="722" y="722" width="158" height="28" rx="6" fill="#FDF2F8"/>
+    <text x="801" y="738" text-anchor="middle" font-size="9" fill="#EC4899">Graph RAG</text>
+    <text x="801" y="748" text-anchor="middle" font-size="7" fill="#94A3B8">31노드 · 34엣지 · BFS</text>
+
+    <rect x="560" y="758" width="320" height="28" rx="6" fill="#FDF2F8"/>
+    <text x="720" y="776" text-anchor="middle" font-size="9" fill="#EC4899">SP_ASK_INSURE_ADVISOR · Cortex Search · Cortex LLM</text>
+  </g>
+
+  <!-- Bidirectional arrow between Dashboard and RAG -->
+  <line x1="460" y1="740" x2="540" y2="740" stroke="#14B8A6" stroke-width="2" stroke-dasharray="6 3"/>
+  <polygon points="540,740 532,736 532,744" fill="#14B8A6"/>
+  <polygon points="460,740 468,736 468,744" fill="#14B8A6"/>
+
+  <!-- 7-step engine annotation (right side) -->
+  <g>
+    <rect x="800" y="428" width="170" height="186" rx="10" fill="#FAFAFA" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="885" y="448" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">7단계 보험료 엔진</text>
+    <line x1="810" y1="455" x2="960" y2="455" stroke="#E2E8F0"/>
+    <text x="818" y="472" font-size="9" fill="#6366F1">❶ Pure Premium</text>
+    <text x="818" y="488" font-size="9" fill="#3B82F6">❷ Experience Adj.</text>
+    <text x="818" y="504" font-size="9" fill="#0EA5E9">❸ Risk Loading</text>
+    <text x="818" y="520" font-size="9" fill="#14B8A6">❹ Expense Loading</text>
+    <text x="818" y="536" font-size="9" fill="#F59E0B">❺ Credibility Blend</text>
+    <text x="818" y="552" font-size="9" fill="#EF4444">❻ Segment Factor</text>
+    <text x="818" y="568" font-size="9" fill="#8B5CF6">❼ Rate Capping</text>
+    <line x1="770" y1="500" x2="800" y2="500" stroke="#94A3B8" stroke-width="1" stroke-dasharray="4 2"/>
+  </g>
+
+  <!-- Snowflake badge -->
+  <rect x="810" y="88" width="160" height="30" rx="8" fill="#29B5E8" opacity="0.1"/>
+  <text x="890" y="108" text-anchor="middle" font-size="10" font-weight="600" fill="#29B5E8">Powered by Snowflake</text>
+
+  <!-- Footer -->
+  <text x="500" y="812" text-anchor="middle" font-size="9" fill="#CBD5E1">dbt 4-Layer Medallion · Dynamic Tables · Cortex AI/ML · Streams+Tasks · RBAC/RLS · Data Masking</text>
+</svg>
