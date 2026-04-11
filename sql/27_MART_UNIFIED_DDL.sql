@@ -150,7 +150,7 @@ real_data AS (
         AVG(m.AVG_INCOME) AS DISTRICT_AVG_INCOME,
         AVG(m.AVG_ASSET) AS DISTRICT_AVG_ASSET,
         AVG(m.ESTIMATED_MOVABLE_ASSET_VALUE) AS AVG_MOVABLE_ASSET,
-        AVG(m.BASE_PREMIUM_MONTHLY) AS AVG_BASE_PREMIUM,
+        MEDIAN(m.BASE_PREMIUM_MONTHLY) AS AVG_BASE_PREMIUM,  -- ★ AVG→MEDIAN (이상값 강건)
         AVG(m.AVG_CREDIT) AS AVG_CREDIT_SCORE
     FROM INSURE_DB.MART.MART_INSURANCE_DESIGN m
     LEFT JOIN INSURE_DB.STAGING.STG_DISTRICT_MASTER dm
@@ -164,7 +164,7 @@ seoul_avg AS (
         AVG(DISTRICT_AVG_INCOME) AS avg_income,
         AVG(DISTRICT_AVG_ASSET) AS avg_asset,
         AVG(AVG_MOVABLE_ASSET) AS avg_movable,
-        AVG(AVG_BASE_PREMIUM) AS avg_premium,
+        MEDIAN(AVG_BASE_PREMIUM) AS avg_premium,  -- ★ MEDIAN
         AVG(AVG_CREDIT_SCORE) AS avg_credit
     FROM real_data
 ),
@@ -204,7 +204,8 @@ all_districts AS (
     UNION ALL
     SELECT * FROM estimated_data
 ),
-risk AS (
+-- ★ 최신 연도 리스크만 사용 (ROW_NUMBER로 연도 불일치 해결)
+risk_ranked AS (
     SELECT
         TRIM(DISTRICT_NAME) AS DISTRICT_NAME,
         YEAR,
@@ -213,8 +214,12 @@ risk AS (
         FIRE_RISK_SCORE,
         THEFT_RISK_SCORE,
         BUILDING_RISK_SCORE,
-        WEATHER_RISK_SCORE
+        WEATHER_RISK_SCORE,
+        ROW_NUMBER() OVER (PARTITION BY TRIM(DISTRICT_NAME) ORDER BY YEAR DESC) AS rn
     FROM INSURE_DB.INTERMEDIATE.INT_DISTRICT_RISK_SCORE
+),
+risk AS (
+    SELECT * FROM risk_ranked WHERE rn = 1
 ),
 apt_price AS (
     SELECT
@@ -229,6 +234,13 @@ seoul_apt_avg AS (
         ROUND(AVG(SALE_PRICE_PER_PYEONG), 0) AS avg_sale,
         ROUND(AVG(JEONSE_PRICE_PER_PYEONG), 0) AS avg_jeonse
     FROM INSURE_DB.STAGING.STG_APT_PRICE
+),
+-- ★ IQR 기반 이상값 클램핑
+premium_bounds AS (
+    SELECT
+        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY AVG_BASE_PREMIUM) AS q1,
+        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY AVG_BASE_PREMIUM) AS q3
+    FROM all_districts
 )
 SELECT
     d.DISTRICT_CODE,
@@ -252,10 +264,13 @@ SELECT
     -- APT_PRICE Integration (v1.2)
     COALESCE(ap.AVG_SALE_PRICE_PYEONG, sa.avg_sale) AS AVG_SALE_PRICE_PYEONG,
     COALESCE(ap.AVG_JEONSE_PRICE_PYEONG, sa.avg_jeonse) AS AVG_JEONSE_PRICE_PYEONG,
-    -- ★ Final Adjusted Premium
+    -- ★ Final Adjusted Premium (IQR 클램핑 + 비선형 리스크 보정)
     ROUND(
-        d.AVG_BASE_PREMIUM
-        * (1 + COALESCE(r.COMPOSITE_RISK_SCORE, 30) / 200.0)
+        LEAST(
+            GREATEST(d.AVG_BASE_PREMIUM, pb.q1 - 1.5 * (pb.q3 - pb.q1)),
+            pb.q3 + 1.5 * (pb.q3 - pb.q1)
+        )
+        * (1 + POWER(COALESCE(r.COMPOSITE_RISK_SCORE, 30), 2) / 8000.0)
         * CASE
             WHEN d.AVG_CREDIT_SCORE >= 800 THEN 0.90
             WHEN d.AVG_CREDIT_SCORE >= 700 THEN 0.95
@@ -267,12 +282,11 @@ SELECT
         d.TOTAL_POPULATION * 0.15 * d.AVG_BASE_PREMIUM * 12
     , 0) AS ESTIMATED_ANNUAL_MARKET_KRW
 FROM all_districts d
-LEFT JOIN risk r
-    ON TRIM(d.GU_NAME) = TRIM(r.DISTRICT_NAME)
-    AND LEFT(d.YEAR_MONTH, 4)::INT = r.YEAR
-LEFT JOIN apt_price ap
-    ON TRIM(d.GU_NAME) = TRIM(ap.GU_NAME)
+-- ★ 최신 연도 리스크만 JOIN (연도 매칭 제거)
+LEFT JOIN risk r ON TRIM(d.GU_NAME) = r.DISTRICT_NAME
+LEFT JOIN apt_price ap ON TRIM(d.GU_NAME) = TRIM(ap.GU_NAME)
 CROSS JOIN seoul_apt_avg sa
+CROSS JOIN premium_bounds pb
 WHERE d.GU_NAME IS NOT NULL;
 
 -- Verification: MART_DISTRICT_INSURANCE_SUMMARY
