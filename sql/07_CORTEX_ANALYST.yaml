@@ -31,7 +31,7 @@ tables:
 
       - name: year_month
         description: 기준 년월 (YYYYMM 형식)
-        expr: STANDARD_YEAR_MONTH
+        expr: YEAR_MONTH
         data_type: VARCHAR
         sample_values: ["202301","202406","202112"]
 
@@ -65,22 +65,22 @@ tables:
 
       - name: avg_credit_score
         description: 평균 신용점수
-        expr: AVG(AVERAGE_SCORE)
+        expr: AVG(CREDIT_SCORE_AVG)
         data_type: NUMBER
 
       - name: high_credit_rate
         description: 신용 상위(1등급) 비율
-        expr: AVG(RATE_SCORE1)
+        expr: AVG(CREDIT_HIGH_RATE)
         data_type: NUMBER
 
       - name: low_credit_rate
         description: 신용 하위(3등급) 비율
-        expr: AVG(RATE_SCORE3)
+        expr: AVG(CREDIT_LOW_RATE)
         data_type: NUMBER
 
       - name: total_delinquent
-        description: 30일 이상 연체 건수 합계
-        expr: SUM(DELINQUENT30_COUNT)
+        description: 1일 이상 연체 건수 합계
+        expr: SUM(DELINQUENT_1D_COUNT)
         data_type: NUMBER
 
       - name: avg_spend
@@ -90,12 +90,12 @@ tables:
 
       - name: avg_abroad_spend
         description: 평균 해외 사용액 (원)
-        expr: AVG(AVERAGE_ABROAD_AMOUNT)
+        expr: AVG(ABROAD_SPEND_AMOUNT)
         data_type: NUMBER
 
       - name: avg_installment
         description: 평균 할부 사용액 (원)
-        expr: AVG(AVERAGE_INSTALLMENT_USAGE_AMOUNT)
+        expr: AVG(INSTALLMENT_AMOUNT)
         data_type: NUMBER
 
       - name: homeowner_count
@@ -115,12 +115,12 @@ tables:
 
       - name: small_unit_ratio
         description: 소형(20평 미만) 비율
-        expr: SUM(PYEONG_UNDER_20_COUNT) / NULLIF(SUM(PYEONG_UNDER_20_COUNT + PYEONG_OVER_20_COUNT), 0)
+        expr: SUM(SMALL_UNIT_COUNT) / NULLIF(SUM(SMALL_UNIT_COUNT + MID_UNIT_COUNT + LARGE_UNIT_COUNT + LUXURY_UNIT_COUNT), 0)
         data_type: NUMBER
 
       - name: estimated_movable_asset
         description: 추정 동산 가치 (원) = 자산*0.15 + 소득*0.08 + 할부*24
-        expr: AVG(AVERAGE_ASSET_AMOUNT) * 0.15 + AVG(MEDIAN_INCOME) * 0.08 + AVG(AVERAGE_INSTALLMENT_USAGE_AMOUNT) * 24
+        expr: AVG(AVERAGE_ASSET_AMOUNT) * 0.15 + AVG(MEDIAN_INCOME) * 0.08 + AVG(INSTALLMENT_AMOUNT) * 24
         data_type: NUMBER
 
   # ─── 보험 설계 마트 ───
@@ -378,6 +378,7 @@ verified_queries:
       GROUP BY DISTRICT_CODE
       ORDER BY low_rate DESC
       LIMIT 5
+    note: "RATE_SCORE3 → CREDIT_LOW_RATE (04_DBT_STAGING alias)"
     verified_at: "2026-04-04"
     verified_by: "CrownPanto"
 
