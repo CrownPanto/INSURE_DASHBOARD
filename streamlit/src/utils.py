@@ -62,11 +62,11 @@ PRESETS = [
      "persona": "박지영 (47세) — 서초구 반포동 아파트, 4인 가족",
      "default_items": ["가전제품", "전자기기", "가구류", "의류/생활"]},
     {"name": "강북 노년 A6+B3", "district": "강북구", "seg_a": "A6", "seg_b": "B3",
-     "income": 30, "desc": "강북 단독주택, 오래된 가구 중심", "active": False,
+     "income": 30, "desc": "강북 단독주택, 오래된 가구 중심", "active": True,
      "persona": "이순자 (68세) — 강북구 수유동 단독주택",
      "default_items": ["가전제품", "가구류", "의류/생활"]},
     {"name": "송파 신혼 A1+B4", "district": "송파구", "seg_a": "A1", "seg_b": "B4",
-     "income": 60, "desc": "송파 신혼부부, 차량+신규 가전", "active": False,
+     "income": 60, "desc": "송파 신혼부부, 차량+신규 가전", "active": True,
      "persona": "최현우·한소희 (31·29세) — 송파구 잠실 신축 아파트",
      "default_items": ["가전제품", "전자기기", "자동차부품", "가구류"]},
 ]

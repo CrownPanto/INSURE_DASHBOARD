@@ -163,15 +163,20 @@ def show_page(session, selected_ym):
                     st.session_state["selected_preset"] = i
                     st.rerun()
             else:
-                # 잠긴 카드 디자인
+                # 비활성 카드 (active=False인 경우, 현재는 없음)
+                active_class = "active-card" if is_selected else ""
                 st.markdown(f"""
-                    <div class="character-card locked-card">
-                        <span class="icon-circle">🔒</span>
+                    <div class="character-card {active_class}">
+                        <span class="icon-circle">{seg_info['icon']}</span>
                         <div class="card-title">{p['name']}</div>
-                        <div class="card-desc">업데이트 예정</div>
+                        <div class="card-desc">{p['desc']}</div>
+                        {'<div style="color:#FFFFFF; font-weight:bold; margin-top:10px;">SELECTED</div>' if is_selected else ''}
                     </div>
                 """, unsafe_allow_html=True)
-                st.button("잠김", key=f"p_{i}", disabled=True, use_container_width=True)
+                if st.button(f"선택하기", key=f"p_{i}", use_container_width=True,
+                             type="primary" if is_selected else "secondary"):
+                    st.session_state["selected_preset"] = i
+                    st.rerun()
 
     # ─── 3. 상세 설정 섹션 ───
     sel = PRESETS[st.session_state["selected_preset"]]

@@ -45,6 +45,16 @@ def show_page(session, selected_ym):
     avg_premium = agg_df["ADJUSTED_PREMIUM_MONTHLY"].mean()
     avg_risk = agg_df["COMPOSITE_RISK_SCORE"].mean()
 
+    # DB의 RISK_GRADE 대신 실제 점수 분포 기반으로 등급 재계산
+    _r = agg_df["COMPOSITE_RISK_SCORE"]
+    _lo = _r.quantile(0.33)
+    _hi = _r.quantile(0.67)
+    def _calc_grade(v):
+        if v >= _hi: return "고위험"
+        if v >= _lo: return "중위험"
+        return "저위험"
+    agg_df["RISK_GRADE"] = _r.apply(_calc_grade)
+
     # ─── 3. KPI 섹션 ───
     k1, k2, k3 = st.columns(3)
     with k1:
@@ -266,6 +276,24 @@ def show_page(session, selected_ym):
     s_err = np.sqrt(np.sum((y_arr - p_fn(x_arr)) ** 2) / (n - 2))
     se = s_err * np.sqrt(1/n + (x_line - x_mean)**2 / np.sum((x_arr - x_mean)**2))
 
+    # ── 추가 통계 계산 ──
+    slope, intercept = z[0], z[1]
+    # t-통계량 (H₀: 기울기=0)
+    se_slope = s_err / np.sqrt(np.sum((x_arr - x_mean)**2))
+    t_stat = slope / se_slope
+    df_stat = n - 2
+    # p-value 근사 (t분포 양측검정, numpy만 사용)
+    # |t|가 클수록 p작음 — 간이 정규근사
+    abs_t = abs(t_stat)
+    p_approx = 2 * (1 - (0.5 * (1 + np.sign(abs_t) * (1 - np.exp(-0.717*abs_t - 0.416*abs_t**2)))))
+    p_approx = max(p_approx, 1e-10)
+    p_str = "< 0.001" if p_approx < 0.001 else f"= {p_approx:.3f}"
+    # 잔차 표준오차 (SEE)
+    see = s_err
+    # 회귀식 문자열
+    sign_str = "+" if intercept >= 0 else "-"
+    reg_eq = f"보험료 = {slope:,.1f} × 위험도 {sign_str} {abs(intercept):,.0f}"
+
     # 사분면별 색상 매핑
     def qcolor(r_score, p_val):
         if r_score >= avg_risk and p_val >= avg_premium: return "#ef4444"   # 고위험·고보험료
@@ -324,12 +352,12 @@ def show_page(session, selected_ym):
         mode="markers+text",
         marker=dict(
             color=df_plot["_qcolor"],
-            size=14,
-            line=dict(color="rgba(255,255,255,0.6)", width=1.2),
+            size=20,
+            line=dict(color="rgba(255,255,255,0.9)", width=2),
         ),
         text=df_plot["GU_NAME"],
         textposition="top center",
-        textfont=dict(size=9, color="#cbd5e1"),
+        textfont=dict(size=12, color="#1e293b"),
         showlegend=False,
         customdata=df_plot[["COMPOSITE_RISK_SCORE", "ADJUSTED_PREMIUM_MONTHLY", "_qcolor"]].values,
         hovertemplate=(
@@ -340,43 +368,81 @@ def show_page(session, selected_ym):
         ),
     ))
 
-    # ── 상관계수 annotation ──
-    corr_color = "#22c55e" if corr_main > 0.7 else "#f59e0b" if corr_main > 0.4 else "#94a3b8"
+    # ── 상관계수 + 회귀식 annotation ──
+    corr_color = "#16a34a" if corr_main > 0.7 else "#d97706" if corr_main > 0.4 else "#64748b"
     corr_txt = "강한 양의 상관" if corr_main > 0.7 else "중간 양의 상관" if corr_main > 0.4 else "약한 상관" if corr_main > 0 else "음의 상관"
     fig.add_annotation(
         xref="paper", yref="paper", x=0.01, y=0.01,
-        text=f"<b>r = {corr_main:+.3f}</b>  R² = {corr_main**2:.2f}<br><span style='color:{corr_color}'>{corr_txt}</span>",
+        text=(
+            f"<b>r = {corr_main:+.3f}</b>  R² = {corr_main**2:.3f}<br>"
+            f"<span style='color:{corr_color}'>{corr_txt}</span><br>"
+            f"<span style='font-size:10px; color:#475569'>{reg_eq}</span>"
+        ),
         showarrow=False, align="left",
-        bgcolor="rgba(15,23,42,0.88)", bordercolor="#4f46e5",
+        bgcolor="rgba(255,255,255,0.95)", bordercolor="#4f46e5",
         borderwidth=1.5, borderpad=10,
-        font=dict(size=12, color="#e2e8f0"),
+        font=dict(size=12, color="#1e293b"),
         xanchor="left", yanchor="bottom",
     )
 
     fig.update_layout(
-        height=540, plot_bgcolor="#0c1220", paper_bgcolor="#0c1220",
-        font=dict(color="#f1f5f9", size=11),
+        height=540, plot_bgcolor="#f8fafc", paper_bgcolor="#f8fafc",
+        font=dict(color="#1e293b", size=11),
         hovermode="closest",
         xaxis=dict(
             title="위험도 점수",
-            title_font=dict(color="#94a3b8", size=12),
+            title_font=dict(color="#475569", size=12),
             tickfont=dict(color="#64748b"),
-            gridcolor="rgba(255,255,255,0.04)",
+            gridcolor="rgba(0,0,0,0.07)",
             range=[x_lo, x_hi],
             zeroline=False,
+            linecolor="rgba(0,0,0,0.1)",
         ),
         yaxis=dict(
             title="월 보험료 (원)",
-            title_font=dict(color="#94a3b8", size=12),
+            title_font=dict(color="#475569", size=12),
             tickfont=dict(color="#64748b"),
             tickformat=",",
-            gridcolor="rgba(255,255,255,0.04)",
+            gridcolor="rgba(0,0,0,0.07)",
             range=[y_lo, y_hi],
             zeroline=False,
+            linecolor="rgba(0,0,0,0.1)",
         ),
         margin=dict(t=20, b=50, l=80, r=30),
     )
     st.plotly_chart(fig, use_container_width=True)
+
+    # ── 통계 분석 패널 ──
+    sig_color = "#16a34a" if p_approx < 0.05 else "#dc2626"
+    sig_txt   = "통계적으로 유의함 ✅" if p_approx < 0.05 else "유의하지 않음 ❌"
+    s1, s2, s3, s4, s5 = st.columns(5)
+    for col, title, value, sub, border in [
+        (s1, "피어슨 r",        f"{corr_main:+.3f}",         corr_txt,                      "#4f46e5"),
+        (s2, "결정계수 R²",     f"{corr_main**2:.3f}",        f"분산의 {corr_main**2*100:.0f}% 설명", "#0891b2"),
+        (s3, "t-통계량",        f"{t_stat:.3f}",              f"자유도 df = {df_stat}",       "#7c3aed"),
+        (s4, "p-value",         p_str,                        sig_txt,                       sig_color),
+        (s5, "잔차 표준오차",   f"₩{see:,.0f}",              "예측 오차 범위",               "#d97706"),
+    ]:
+        col.markdown(
+            f'<div style="background:#ffffff; border:1px solid #e2e8f0; border-top:3px solid {border}; '
+            f'border-radius:8px; padding:12px 14px; text-align:center;">'
+            f'<div style="font-size:10px; color:#64748b; font-weight:600; margin-bottom:4px;">{title}</div>'
+            f'<div style="font-size:20px; font-weight:800; color:#1e293b; font-family:monospace;">{value}</div>'
+            f'<div style="font-size:10px; color:#94a3b8; margin-top:3px;">{sub}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        f'<div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; '
+        f'padding:12px 18px; margin-top:10px; font-size:12px; color:#166534;">'
+        f'📐 <b>회귀식:</b> &nbsp; <code style="background:#dcfce7; padding:3px 8px; border-radius:4px; font-size:13px;">'
+        f'{reg_eq}</code>'
+        f'&nbsp;&nbsp;|&nbsp;&nbsp; 위험도 1점 상승 시 월보험료 평균 <b>₩{slope:,.0f} 증가</b>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # ── 사분면 범례 ──
     lc1, lc2, lc3, lc4 = st.columns(4)
@@ -388,9 +454,9 @@ def show_page(session, selected_ym):
     ]:
         col.markdown(
             f'<div style="border-left:3px solid {color}; padding:6px 10px; '
-            f'background:rgba(255,255,255,0.03); border-radius:0 6px 6px 0; margin:2px 0;">'
-            f'<div style="font-size:11px; font-weight:700; color:#e2e8f0;">{label}</div>'
-            f'<div style="font-size:10px; color:#64748b;">{desc}</div></div>',
+            f'background:rgba(0,0,0,0.03); border-radius:0 6px 6px 0; margin:2px 0;">'
+            f'<div style="font-size:11px; font-weight:700; color:#1e293b;">{label}</div>'
+            f'<div style="font-size:10px; color:#475569;">{desc}</div></div>',
             unsafe_allow_html=True,
         )
 
@@ -406,12 +472,152 @@ def show_page(session, selected_ym):
         with col:
             names = " · ".join(subset["GU_NAME"].tolist()) if len(subset) > 0 else "없음"
             st.markdown(f"""
-            <div style="background:rgba(255,255,255,0.04); border-radius:10px;
-                        padding:12px; border:1px solid rgba(255,255,255,0.1); min-height:90px;">
-                <div style="font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:6px;">{label}</div>
-                <div style="font-size:11px; color:#e2e8f0; line-height:1.6;">{names}</div>
+            <div style="background:rgba(0,0,0,0.03); border-radius:10px;
+                        padding:12px; border:1px solid rgba(0,0,0,0.1); min-height:90px;">
+                <div style="font-size:11px; font-weight:700; color:#1e293b; margin-bottom:6px;">{label}</div>
+                <div style="font-size:11px; color:#334155; line-height:1.6;">{names}</div>
             </div>
             """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ─── 6-3. 위험도가 높은 이유 — 요인별 분석 ───
+    st.markdown("---")
+    st.subheader("왜 위험도가 높은가? — 요인별 분석")
+    st.caption("4개 위험 요소(화재·도난·건물노후·기상)가 종합 위험도에 얼마나 기여하는지 확인하세요")
+
+    risk_factors = {
+        "🔥 화재": "FIRE_RISK_SCORE",
+        "🔓 도난": "THEFT_RISK_SCORE",
+        "🏚 건물노후": "BUILDING_RISK_SCORE",
+        "🌧 기상": "WEATHER_RISK_SCORE",
+    }
+    factor_colors = ["#ef4444", "#f97316", "#8b5cf6", "#0ea5e9"]
+
+    # ── 1. 요인별 서울 평균 기여도 파이 (전체 평균) ──
+    col_pie, col_radar = st.columns([1, 1])
+
+    with col_pie:
+        st.markdown("##### 서울 전체 — 위험 요인 구성비")
+        factor_means = {k: agg_df[v].mean() for k, v in risk_factors.items()}
+        total = sum(factor_means.values())
+        fig_pie = go.Figure(go.Pie(
+            labels=list(factor_means.keys()),
+            values=list(factor_means.values()),
+            hole=0.45,
+            marker=dict(colors=factor_colors, line=dict(color="white", width=2)),
+            textinfo="label+percent",
+            textfont=dict(size=12, color="#1e293b"),
+            hovertemplate="<b>%{label}</b><br>평균 점수: %{value:.1f}점<br>구성비: %{percent}<extra></extra>",
+        ))
+        fig_pie.update_layout(
+            height=300, margin=dict(t=10, b=10, l=10, r=10),
+            plot_bgcolor="#f8fafc", paper_bgcolor="#f8fafc",
+            showlegend=False,
+            annotations=[dict(text=f"<b>위험도<br>구성</b>", x=0.5, y=0.5,
+                              font=dict(size=13, color="#1e293b"), showarrow=False)],
+        )
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    with col_radar:
+        st.markdown("##### 고위험 TOP5 vs 저위험 TOP5 비교")
+        top5 = agg_df.nlargest(5, "COMPOSITE_RISK_SCORE")
+        bot5 = agg_df.nsmallest(5, "COMPOSITE_RISK_SCORE")
+        factors_kr = ["🔥 화재", "🔓 도난", "🏚 건물노후", "🌧 기상"]
+        cols_list  = ["FIRE_RISK_SCORE", "THEFT_RISK_SCORE", "BUILDING_RISK_SCORE", "WEATHER_RISK_SCORE"]
+
+        fig_rad = go.Figure()
+        for df_grp, name, color, fill in [
+            (top5, "고위험 TOP5 평균", "#ef4444", "rgba(239,68,68,0.15)"),
+            (bot5, "저위험 TOP5 평균", "#22c55e", "rgba(34,197,94,0.15)"),
+        ]:
+            vals = [df_grp[c].mean() for c in cols_list]
+            vals_closed = vals + [vals[0]]
+            fig_rad.add_trace(go.Scatterpolar(
+                r=vals_closed,
+                theta=factors_kr + [factors_kr[0]],
+                fill="toself",
+                fillcolor=fill,
+                line=dict(color=color, width=2),
+                name=name,
+                hovertemplate="%{theta}: <b>%{r:.1f}점</b><extra>" + name + "</extra>",
+            ))
+        fig_rad.update_layout(
+            height=300, margin=dict(t=20, b=20, l=30, r=30),
+            polar=dict(
+                bgcolor="#f8fafc",
+                radialaxis=dict(visible=True, gridcolor="rgba(0,0,0,0.1)",
+                                tickfont=dict(size=9, color="#64748b")),
+                angularaxis=dict(tickfont=dict(size=11, color="#1e293b")),
+            ),
+            paper_bgcolor="#f8fafc",
+            legend=dict(font=dict(size=10, color="#1e293b"), bgcolor="rgba(255,255,255,0.8)",
+                        bordercolor="#e2e8f0", borderwidth=1),
+        )
+        st.plotly_chart(fig_rad, use_container_width=True)
+
+    # ── 2. 구별 요인 히트맵 ──
+    st.markdown("##### 구별 위험 요인 히트맵 (위험도 높은 순)")
+    st.caption("색이 진할수록 해당 요인 점수가 높음 — 어떤 요인이 위험도를 끌어올리는지 확인")
+
+    df_heat = agg_df.sort_values("COMPOSITE_RISK_SCORE", ascending=True).copy()
+    factor_labels = ["🔥 화재", "🔓 도난", "🏚 건물노후", "🌧 기상"]
+    factor_cols   = ["FIRE_RISK_SCORE", "THEFT_RISK_SCORE", "BUILDING_RISK_SCORE", "WEATHER_RISK_SCORE"]
+
+    z_data     = df_heat[factor_cols].values          # shape: (25, 4)
+    text_data  = [[f"{v:.1f}" for v in row] for row in z_data]
+
+    fig_heat = go.Figure(go.Heatmap(
+        z=z_data,
+        x=factor_labels,
+        y=df_heat["GU_NAME"].tolist(),
+        text=text_data,
+        texttemplate="%{text}",
+        textfont=dict(size=11, color="white"),
+        colorscale=[
+            [0.0, "#dbeafe"],
+            [0.4, "#60a5fa"],
+            [0.7, "#f97316"],
+            [1.0, "#dc2626"],
+        ],
+        hovertemplate="<b>%{y}</b><br>%{x}: <b>%{z:.1f}점</b><extra></extra>",
+        showscale=True,
+        colorbar=dict(
+            title=dict(text="점수", font=dict(color="#475569", size=11)),
+            tickfont=dict(color="#64748b", size=10),
+            thickness=12, len=0.8,
+        ),
+    ))
+
+    fig_heat.update_layout(
+        height=650,
+        plot_bgcolor="#f8fafc", paper_bgcolor="#f8fafc",
+        font=dict(color="#1e293b", size=11),
+        xaxis=dict(tickfont=dict(size=12, color="#1e293b"), side="top"),
+        yaxis=dict(tickfont=dict(size=11, color="#1e293b")),
+        margin=dict(t=40, l=100, r=80, b=20),
+    )
+    st.plotly_chart(fig_heat, use_container_width=True)
+
+    # ── 3. 각 요인의 보험료 상관관계 요약 ──
+    st.markdown("##### 각 위험 요인과 보험료의 상관관계")
+    fc1, fc2, fc3, fc4 = st.columns(4)
+    for col, (label, fcol), fcolor in zip([fc1, fc2, fc3, fc4], risk_factors.items(), factor_colors):
+        fc_corr = agg_df[fcol].corr(agg_df["ADJUSTED_PREMIUM_MONTHLY"])
+        bar_w = int(abs(fc_corr) * 100)
+        interp = "강한" if abs(fc_corr) > 0.7 else "중간" if abs(fc_corr) > 0.4 else "약한"
+        direct = "양의" if fc_corr > 0 else "음의"
+        col.markdown(
+            f'<div style="background:#ffffff; border:1px solid #e2e8f0; border-top:3px solid {fcolor}; '
+            f'border-radius:8px; padding:14px; text-align:center;">'
+            f'<div style="font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">{label}</div>'
+            f'<div style="font-size:26px; font-weight:800; color:{fcolor}; font-family:monospace;">{fc_corr:+.3f}</div>'
+            f'<div style="font-size:10px; color:#64748b; margin:4px 0;">{interp} {direct} 상관</div>'
+            f'<div style="background:#f1f5f9; border-radius:4px; height:6px; margin-top:6px;">'
+            f'<div style="background:{fcolor}; width:{bar_w}%; height:6px; border-radius:4px;"></div>'
+            f'</div></div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -593,9 +799,42 @@ def show_page(session, selected_ym):
             st.markdown(card, unsafe_allow_html=True)
 
     # ─── 8. 전체 데이터 테이블 ───
-    with st.expander("전체 25개 구 데이터 보기"):
+    with st.expander("📋 전체 25개 구 데이터 보기"):
         show_df = agg_df[["GU_NAME","ADJUSTED_PREMIUM_MONTHLY","COMPOSITE_RISK_SCORE","RISK_GRADE"]].copy()
-        show_df.columns = ["자치구", "월보험료(원)", "위험도", "등급"]
-        st.dataframe(show_df.sort_values("월보험료(원)", ascending=False), use_container_width=True)
+        show_df = show_df.sort_values("ADJUSTED_PREMIUM_MONTHLY", ascending=False).reset_index(drop=True)
+
+        def grade_icon(g):
+            return {"고위험": "🔴 고위험", "중위험": "🟡 중위험", "저위험": "🟢 저위험"}.get(g, g)
+        show_df["RISK_GRADE"] = show_df["RISK_GRADE"].apply(grade_icon)
+        show_df["_diff"] = ((show_df["ADJUSTED_PREMIUM_MONTHLY"] - avg_premium) / avg_premium * 100)
+
+        show_df.columns = ["자치구", "월보험료", "위험도 점수", "위험 등급", "평균대비(%)"]
+
+        st.dataframe(
+            show_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "자치구": st.column_config.TextColumn("자치구", width="small"),
+                "월보험료": st.column_config.NumberColumn(
+                    "💰 월보험료",
+                    format="₩%,.0f",
+                    width="medium",
+                ),
+                "위험도 점수": st.column_config.ProgressColumn(
+                    "⚠️ 위험도 점수",
+                    format="%.1f점",
+                    min_value=0,
+                    max_value=100,
+                    width="large",
+                ),
+                "위험 등급": st.column_config.TextColumn("위험 등급", width="small"),
+                "평균대비(%)": st.column_config.NumberColumn(
+                    "📊 평균 대비",
+                    format="%+.1f%%",
+                    width="small",
+                ),
+            },
+        )
 
     st.caption("🟢 인구/화재/범죄: KOSIS, 소방청, 경찰청 | 🔵 위험도/보험료: INSURE 엔진")
