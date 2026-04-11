@@ -81,7 +81,7 @@ COVERAGE_ITEMS = {
 }
 
 def _demo_district_data():
-    # ★ v2.4 FIX: DB 로직과 동기화 — IQR 클램핑 + 리스크 반영 보험료 산출
+    # ★ v2.5 FIX: DB 로직과 동기화 — IQR 클램핑 + 비선형(지수) 리스크 보정
     import numpy as np
     bases = [DISTRICT_PROFILES[gu]["base"] for gu in DEMO_DISTRICTS]
     q1, q3 = np.percentile(bases, 25), np.percentile(bases, 75)
@@ -95,8 +95,9 @@ def _demo_district_data():
         grade = "A" if p["risk"] < 38 else "B" if p["risk"] < 42 else "C" if p["risk"] < 47 else "D" if p["risk"] < 52 else "E"
         # IQR 클램핑 적용 (DB의 LEAST/GREATEST와 동일)
         clamped_base = max(min(p["base"], upper_bound), lower_bound)
-        # DB 공식: base * (1 + risk/200) * credit_factor (데모는 신용 1.05 가정)
-        adj_premium = int(clamped_base * (1 + p["risk"] / 200.0) * 1.05)
+        # DB 공식: base * (1 + risk²/8000) * credit_factor (데모는 신용 1.05 가정)
+        # ★ v2.5: 선형 (1+risk/200) → 비선형 제곱함수로 변경 (지역별 편차 확대)
+        adj_premium = int(clamped_base * (1 + p["risk"] ** 2 / 8000.0) * 1.05)
         market = int(p["pop"] * adj_premium * 0.03 / 1e8) * 1e8
         rows.append({
             "GU_NAME": gu, "TOTAL_POPULATION": p["pop"], "COMPOSITE_RISK_SCORE": p["risk"], "RISK_GRADE": grade,
