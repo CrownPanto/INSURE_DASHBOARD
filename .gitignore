@@ -1,3 +1,5 @@
 .streamlit/
 secrets.toml
 .mcp.json
+scripts/.env
+scripts/.venv/
