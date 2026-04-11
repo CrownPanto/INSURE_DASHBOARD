@@ -556,46 +556,50 @@ def show_page(session, selected_ym):
         )
         st.plotly_chart(fig_rad, use_container_width=True)
 
-    # ── 2. 구별 요인 히트맵 ──
-    st.markdown("##### 구별 위험 요인 히트맵 (위험도 높은 순)")
-    st.caption("색이 진할수록 해당 요인 점수가 높음 — 어떤 요인이 위험도를 끌어올리는지 확인")
+    # ── 2. 구별 요인 히트맵 (상위 10구) ──
+    st.markdown("##### 위험 요인 히트맵 — 상위 10개 구")
+    st.caption("위험도 높은 순 상위 10구 | 색이 진할수록 해당 요인 점수가 높음")
 
-    df_heat = agg_df.sort_values("COMPOSITE_RISK_SCORE", ascending=True).copy()
     factor_labels = ["🔥 화재", "🔓 도난", "🏚 건물노후", "🌧 기상"]
     factor_cols   = ["FIRE_RISK_SCORE", "THEFT_RISK_SCORE", "BUILDING_RISK_SCORE", "WEATHER_RISK_SCORE"]
 
-    z_data     = df_heat[factor_cols].values          # shape: (25, 4)
-    text_data  = [[f"{v:.1f}" for v in row] for row in z_data]
+    # 상위 10구만 (위험도 내림차순)
+    df_heat = agg_df.nlargest(10, "COMPOSITE_RISK_SCORE").sort_values("COMPOSITE_RISK_SCORE", ascending=False)
+
+    # 축 전환: y=4요인, x=10구
+    z_data    = df_heat[factor_cols].values.T          # shape: (4, 10)
+    text_data = [[f"{v:.0f}" for v in row] for row in z_data]
+    gu_labels = df_heat["GU_NAME"].tolist()
 
     fig_heat = go.Figure(go.Heatmap(
         z=z_data,
-        x=factor_labels,
-        y=df_heat["GU_NAME"].tolist(),
+        x=gu_labels,
+        y=factor_labels,
         text=text_data,
         texttemplate="%{text}",
-        textfont=dict(size=11, color="white"),
+        textfont=dict(size=13, color="white"),
         colorscale=[
-            [0.0, "#dbeafe"],
-            [0.4, "#60a5fa"],
+            [0.0, "#1e3a5f"],
+            [0.4, "#2563eb"],
             [0.7, "#f97316"],
             [1.0, "#dc2626"],
         ],
-        hovertemplate="<b>%{y}</b><br>%{x}: <b>%{z:.1f}점</b><extra></extra>",
+        hovertemplate="<b>%{x}</b><br>%{y}: <b>%{z:.1f}점</b><extra></extra>",
         showscale=True,
         colorbar=dict(
-            title=dict(text="점수", font=dict(color="#475569", size=11)),
-            tickfont=dict(color="#64748b", size=10),
+            title=dict(text="위험점수", font=dict(color="#94a3b8", size=11)),
+            tickfont=dict(color="#94a3b8", size=10),
             thickness=12, len=0.8,
         ),
     ))
 
     fig_heat.update_layout(
-        height=650,
-        plot_bgcolor="#f8fafc", paper_bgcolor="#f8fafc",
-        font=dict(color="#1e293b", size=11),
-        xaxis=dict(tickfont=dict(size=12, color="#1e293b"), side="top"),
-        yaxis=dict(tickfont=dict(size=11, color="#1e293b")),
-        margin=dict(t=40, l=100, r=80, b=20),
+        height=280,
+        plot_bgcolor="#0f172a", paper_bgcolor="#0f172a",
+        font=dict(color="#f1f5f9", size=12),
+        xaxis=dict(tickfont=dict(size=12, color="#f1f5f9"), side="bottom", tickangle=-30),
+        yaxis=dict(tickfont=dict(size=12, color="#f1f5f9")),
+        margin=dict(t=10, l=10, r=80, b=60),
     )
     st.plotly_chart(fig_heat, use_container_width=True)
 

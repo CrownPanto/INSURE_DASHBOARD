@@ -1,7 +1,6 @@
 
 import streamlit as st
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from utils import PRESETS, SEGMENTS_A, SEGMENTS_B, COVERAGE_ITEMS, calc_premium
 import utils
 
@@ -135,48 +134,40 @@ def show_page(session, selected_ym):
 
     # ─── 2. 캐릭터 프로필 선택 (카드 UI) ───
     st.subheader("고객 프로필 선택")
-    p_cols = st.columns(4)
 
     if "selected_preset" not in st.session_state:
         st.session_state["selected_preset"] = 0
 
-    for i, p in enumerate(PRESETS):
-        with p_cols[i]:
-            seg_info = SEGMENTS_A[p["seg_a"]]
-            is_selected = i == st.session_state["selected_preset"]
-
-            if p["active"]:
-                # 활성 카드 디자인
+    # 10개 카드를 5+5 두 줄로 표시
+    for row in range(2):
+        p_cols = st.columns(5)
+        for col_idx in range(5):
+            i = row * 5 + col_idx
+            if i >= len(PRESETS):
+                break
+            p = PRESETS[i]
+            with p_cols[col_idx]:
+                is_selected = i == st.session_state["selected_preset"]
                 active_class = "active-card" if is_selected else ""
                 st.markdown(f"""
                     <div class="character-card {active_class}">
-                        <span class="icon-circle">{seg_info['icon']}</span>
+                        <div style="font-size:0.7rem; color:#94a3b8; font-weight:700;
+                                    letter-spacing:1px; margin-bottom:4px;">{p['id']}</div>
+                        <span class="icon-circle">{p['icon']}</span>
                         <div class="card-title">{p['name']}</div>
                         <div class="card-desc">{p['desc']}</div>
-                        {'<div style="color:#FFFFFF; font-weight:bold; margin-top:10px;">SELECTED</div>' if is_selected else ''}
+                        <div style="color:#6366F1; font-size:0.78rem; margin-top:6px; font-weight:600;">
+                            {p.get('premium_range', '')}
+                        </div>
+                        {'<div style="color:#FFFFFF; font-weight:bold; margin-top:8px; font-size:0.8rem;">✓ SELECTED</div>' if is_selected else ''}
                     </div>
                 """, unsafe_allow_html=True)
 
-                # 버튼을 투명하게 만들어 카드 위에 겹치는 느낌 주기 (Streamlit 제약상 아래 배치)
-                if st.button(f"선택하기", key=f"p_{i}", use_container_width=True,
+                if st.button("선택", key=f"p_{i}", use_container_width=True,
                              type="primary" if is_selected else "secondary"):
                     st.session_state["selected_preset"] = i
                     st.rerun()
-            else:
-                # 비활성 카드 (active=False인 경우, 현재는 없음)
-                active_class = "active-card" if is_selected else ""
-                st.markdown(f"""
-                    <div class="character-card {active_class}">
-                        <span class="icon-circle">{seg_info['icon']}</span>
-                        <div class="card-title">{p['name']}</div>
-                        <div class="card-desc">{p['desc']}</div>
-                        {'<div style="color:#FFFFFF; font-weight:bold; margin-top:10px;">SELECTED</div>' if is_selected else ''}
-                    </div>
-                """, unsafe_allow_html=True)
-                if st.button(f"선택하기", key=f"p_{i}", use_container_width=True,
-                             type="primary" if is_selected else "secondary"):
-                    st.session_state["selected_preset"] = i
-                    st.rerun()
+        st.markdown('<div style="margin-bottom:8px;"></div>', unsafe_allow_html=True)
 
     # ─── 3. 상세 설정 섹션 ───
     sel = PRESETS[st.session_state["selected_preset"]]
@@ -214,7 +205,7 @@ def show_page(session, selected_ym):
         item_keys = list(utils.COVERAGE_ITEMS.keys())
         selected_items = []
 
-        # 2열 그리드 배치
+        # 카드 그리드 배치
         for i in range(0, len(item_keys), 2):
             cols = st.columns(2)
             for j in range(2):
@@ -222,12 +213,31 @@ def show_page(session, selected_ym):
                     name = item_keys[i + j]
                     info = utils.COVERAGE_ITEMS[name]
                     monthly_cost = info["limit"] * info["damage_rate"] / 12
+                    is_default = name in sel["default_items"]
                     with cols[j]:
+                        st.markdown(f"""
+                            <div style="background:{'rgba(99,102,241,0.12)' if is_default else '#1e293b'};
+                                        border:1px solid {'#6366F1' if is_default else '#334155'};
+                                        border-radius:12px; padding:14px 16px; margin-bottom:2px;">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                    <span style="font-size:1.6rem; line-height:1;">{info['icon']}</span>
+                                    <div style="text-align:right;">
+                                        <div style="color:#64748b; font-size:0.6rem; text-transform:uppercase; letter-spacing:0.5px;">보장한도</div>
+                                        <div style="color:#e2e8f0; font-size:0.82rem; font-weight:700;">₩{info['limit']//10000:,}만원</div>
+                                    </div>
+                                </div>
+                                <div style="color:#ffffff; font-weight:700; font-size:0.95rem; margin:8px 0 3px 0;">{name}</div>
+                                <div style="color:#94a3b8; font-size:0.7rem; margin-bottom:6px;">{info['examples']}</div>
+                                <div style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25);
+                                            border-radius:6px; padding:4px 8px; display:inline-block;">
+                                    <span style="color:#34d399; font-size:0.72rem; font-weight:600;">+₩{monthly_cost:,.0f}/월</span>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
                         checked = st.checkbox(
-                            f"{info['icon']} {name}",
-                            value=(name in sel["default_items"]),
+                            "보장에 포함",
+                            value=is_default,
                             key=f"final_chk_{name}",
-                            help=f"보장한도 ₩{info['limit']:,.0f} | 월 +₩{monthly_cost:,.0f} 추가 | 예: {info['examples']}"
                         )
                         if checked:
                             selected_items.append(name)
@@ -279,53 +289,77 @@ def show_page(session, selected_ym):
         """, unsafe_allow_html=True)
 
         # ── 인사이트 차트 (리스크 게이지 + 보험료 구성) ──
-        risk = res["risk_score"]
-        if risk < 3:
-            risk_label, risk_color = "낮음", "#10B981"
-        elif risk < 6:
-            risk_label, risk_color = "보통", "#F59E0B"
+        risk = res["risk_score"]  # 0~100 스케일
+        if risk < 20:
+            risk_label, risk_color, risk_emoji = "극도 안전", "#10B981", "😌"
+        elif risk < 40:
+            risk_label, risk_color, risk_emoji = "안전", "#84CC16", "🙂"
+        elif risk < 55:
+            risk_label, risk_color, risk_emoji = "보통", "#EAB308", "😐"
+        elif risk < 70:
+            risk_label, risk_color, risk_emoji = "위험", "#F97316", "😟"
         else:
-            risk_label, risk_color = "높음", "#EF4444"
+            risk_label, risk_color, risk_emoji = "극도 위험", "#EF4444", "😱"
 
         addon_pct = res["item_addon"] / res["final"] * 100 if res["final"] > 0 else 0
         base_pct = 100 - addon_pct
         monthly_income = sel["income"] * 1_000_000 / 12
         burden_pct = res["final"] / monthly_income * 100
 
-        fig = make_subplots(
-            rows=1, cols=2,
-            specs=[[{"type": "indicator"}, {"type": "pie"}]],
-            subplot_titles=["리스크 점수", "보험료 구성"],
-        )
-
-        # 왼쪽: 리스크 게이지
-        fig.add_trace(go.Indicator(
+        # ── 공포·탐욕 스타일 리스크 게이지 (단독) ──
+        fig_risk = go.Figure()
+        fig_risk.add_trace(go.Indicator(
             mode="gauge+number",
             value=risk,
-            number={"font": {"color": risk_color, "size": 28}, "suffix": " pt"},
+            number={"font": {"color": risk_color, "size": 38, "family": "Arial Black"}, "suffix": ""},
             gauge={
-                "axis": {"range": [0, 10], "tickcolor": "#94a3b8", "tickfont": {"color": "#94a3b8", "size": 10}},
-                "bar": {"color": risk_color, "thickness": 0.25},
+                "axis": {
+                    "range": [0, 100],
+                    "tickvals": [0, 20, 40, 55, 70, 100],
+                    "ticktext": ["0", "20", "40", "55", "70", "100"],
+                    "tickcolor": "#475569",
+                    "tickfont": {"color": "#64748b", "size": 9},
+                },
+                "bar": {"color": risk_color, "thickness": 0.28},
                 "bgcolor": "rgba(0,0,0,0)",
                 "borderwidth": 0,
                 "steps": [
-                    {"range": [0, 3],  "color": "rgba(16,185,129,0.2)"},
-                    {"range": [3, 6],  "color": "rgba(245,158,11,0.2)"},
-                    {"range": [6, 10], "color": "rgba(239,68,68,0.2)"},
+                    {"range": [0, 20],   "color": "rgba(16,185,129,0.30)"},
+                    {"range": [20, 40],  "color": "rgba(132,204,22,0.28)"},
+                    {"range": [40, 55],  "color": "rgba(234,179,8,0.28)"},
+                    {"range": [55, 70],  "color": "rgba(249,115,22,0.28)"},
+                    {"range": [70, 100], "color": "rgba(239,68,68,0.28)"},
                 ],
-                "threshold": {"line": {"color": risk_color, "width": 3}, "value": risk},
+                "threshold": {"line": {"color": "#FFFFFF", "width": 3}, "value": risk},
             },
-        ), row=1, col=1)
-
-        # 리스크 레벨 텍스트 annotation
-        fig.add_annotation(
-            text=f"<b>{risk_label}</b>",
-            x=0.22, y=0.08, xref="paper", yref="paper",
-            showarrow=False,
-            font=dict(color=risk_color, size=16),
+        ))
+        fig_risk.update_layout(
+            height=210,
+            margin=dict(l=20, r=20, t=20, b=0),
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#f1f5f9"),
+            annotations=[
+                # 구간 레이블
+                dict(text="극도<br>안전", x=0.04, y=0.18, xref="paper", yref="paper",
+                     showarrow=False, font=dict(color="#10B981", size=8), align="center"),
+                dict(text="안전", x=0.22, y=0.36, xref="paper", yref="paper",
+                     showarrow=False, font=dict(color="#84CC16", size=8), align="center"),
+                dict(text="보통", x=0.50, y=0.47, xref="paper", yref="paper",
+                     showarrow=False, font=dict(color="#EAB308", size=8), align="center"),
+                dict(text="위험", x=0.73, y=0.36, xref="paper", yref="paper",
+                     showarrow=False, font=dict(color="#F97316", size=8), align="center"),
+                dict(text="극도<br>위험", x=0.93, y=0.18, xref="paper", yref="paper",
+                     showarrow=False, font=dict(color="#EF4444", size=8), align="center"),
+                # 현재 등급 표시
+                dict(text=f"<b>{risk_emoji} {risk_label}</b>",
+                     x=0.5, y=-0.06, xref="paper", yref="paper",
+                     showarrow=False, font=dict(color=risk_color, size=15), align="center"),
+            ],
         )
+        st.plotly_chart(fig_risk, use_container_width=True)
 
-        # 오른쪽: 보험료 구성 도넛
+        # ── 보험료 구성 도넛 (단독) ──
+        fig = go.Figure()
         fig.add_trace(go.Pie(
             labels=["기본 보험료", "품목 가산"],
             values=[res["segment_adjusted"], max(res["item_addon"], 0)],
@@ -339,44 +373,28 @@ def show_page(session, selected_ym):
             hovertemplate="<b>%{label}</b><br>₩%{value:,.0f} (%{percent})<extra></extra>",
             direction="clockwise",
             sort=False,
-        ), row=1, col=2)
-
-        # 도넛 중앙 텍스트
-        fig.add_annotation(
-            text=f"<b>부담률</b><br><span style='font-size:14px'>{burden_pct:.1f}%</span>",
-            x=0.78, y=0.5, xref="paper", yref="paper",
-            showarrow=False,
-            font=dict(color="#CBD5E1", size=12),
-            align="center",
-        )
+        ))
 
         fig.update_layout(
-            height=290,
-            margin=dict(l=10, r=10, t=40, b=10),
+            height=220,
+            margin=dict(l=10, r=10, t=30, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             font=dict(color="#f1f5f9", size=11),
             showlegend=True,
             legend=dict(
                 orientation="h",
-                x=0.55, y=-0.05,
+                x=0.5, y=-0.08, xanchor="center",
                 font=dict(color="#CBD5E1", size=10),
                 bgcolor="rgba(0,0,0,0)",
             ),
             annotations=[
-                dict(text=f"<b>{risk_label}</b>",
-                     x=0.22, y=0.08, xref="paper", yref="paper",
-                     showarrow=False, font=dict(color=risk_color, size=16)),
                 dict(text=f"<b>부담률</b><br>{burden_pct:.1f}%",
-                     x=0.785, y=0.5, xref="paper", yref="paper",
-                     showarrow=False, font=dict(color="#CBD5E1", size=12), align="center"),
-                # subplot titles
-                dict(text="리스크 점수", x=0.18, y=1.05, xref="paper", yref="paper",
-                     showarrow=False, font=dict(color="#94a3b8", size=12)),
-                dict(text="보험료 구성", x=0.82, y=1.05, xref="paper", yref="paper",
+                     x=0.5, y=0.5, xref="paper", yref="paper",
+                     showarrow=False, font=dict(color="#CBD5E1", size=13), align="center"),
+                dict(text="보험료 구성", x=0.5, y=1.05, xref="paper", yref="paper",
                      showarrow=False, font=dict(color="#94a3b8", size=12)),
             ],
         )
-        fig.update_annotations(font_size=12)
 
         st.plotly_chart(fig, use_container_width=True)
 
@@ -413,9 +431,9 @@ def show_page(session, selected_ym):
         item_costs.sort(key=lambda x: x["cost"], reverse=True)
 
         # ── 한 줄 인사이트 요약 ──
-        if risk < 3:
+        if risk < 40:
             risk_plain = "비교적 안전한 지역에 거주 중이에요."
-        elif risk < 6:
+        elif risk < 55:
             risk_plain = "보통 수준의 위험 지역이에요. 기본 보장이면 충분할 수 있어요."
         else:
             risk_plain = "위험도가 높은 지역이에요. 보장 범위를 넓히는 걸 권장해요."
