@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INSURE - Snowflake Hackathon 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #f0f0f0; }
+
+  /* Print / PDF: each slide = 1 page */
+  @media print {
+    .slide { page-break-after: always; box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; }
+    body { background: #fff; }
+  }
+
+  .slide {
+    width: 960px; height: 540px; margin: 24px auto;
+    background: #fff; position: relative; overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12); border-radius: 4px;
+  }
+
+  /* Snowflake brand bar */
+  .brand-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #29B5E8, #71E4F0); }
+  .slide-num { position: absolute; bottom: 12px; right: 24px; font-size: 11px; color: #aaa; }
+  .logo-text { position: absolute; bottom: 10px; left: 24px; font-size: 10px; color: #bbb; font-weight: 600; letter-spacing: 1px; }
+
+  /* ===== SLIDE 1: Cover ===== */
+  .s1 { background: linear-gradient(135deg, #1a1f36 0%, #29336a 100%); color: #fff; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+  .s1 .title { font-size: 52px; font-weight: 800; letter-spacing: -2px; margin-bottom: 8px; }
+  .s1 .title span { color: #29B5E8; }
+  .s1 .subtitle { font-size: 20px; color: rgba(255,255,255,0.6); margin-bottom: 36px; font-weight: 300; }
+  .s1 .meta { font-size: 14px; color: rgba(255,255,255,0.4); }
+  .s1 .meta b { color: rgba(255,255,255,0.7); }
+  .s1 .brand-bar { background: linear-gradient(90deg, #29B5E8, #71E4F0); }
+
+  /* ===== SLIDE 4: Problem + Architecture ===== */
+  .s4 { padding: 40px 48px; }
+  .s4 .slide-title { font-size: 11px; font-weight: 700; color: #29B5E8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
+  .s4 h2 { font-size: 26px; font-weight: 700; color: #1a1f36; margin-bottom: 20px; }
+  .s4 .two-col { display: flex; gap: 32px; height: 400px; }
+  .s4 .col-left { flex: 1; }
+  .s4 .col-right { flex: 1; }
+
+  .problem-item { margin-bottom: 14px; }
+  .problem-item .num { display: inline-block; width: 22px; height: 22px; background: #29B5E8; color: #fff; border-radius: 50%; text-align: center; line-height: 22px; font-size: 11px; font-weight: 700; margin-right: 8px; }
+  .problem-item .text { font-size: 13px; color: #444; line-height: 1.5; }
+  .problem-item h4 { font-size: 14px; color: #1a1f36; font-weight: 600; display: inline; }
+
+  .theme-box { margin-top: 16px; background: #f7f9fc; border-left: 3px solid #29B5E8; padding: 12px 16px; border-radius: 0 6px 6px 0; }
+  .theme-box .label { font-size: 10px; font-weight: 700; color: #29B5E8; text-transform: uppercase; letter-spacing: 1px; }
+  .theme-box p { font-size: 13px; color: #333; margin-top: 4px; font-weight: 500; }
+
+  .arch-box { background: #f7f9fc; border-radius: 8px; padding: 16px; height: 100%; display: flex; flex-direction: column; justify-content: center; }
+  .arch-title { font-size: 11px; font-weight: 700; color: #29B5E8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .arch-layer { display: flex; align-items: center; margin: 3px 0; border-radius: 4px; overflow: hidden; font-size: 11px; }
+  .arch-layer .lbl { width: 100px; padding: 6px 8px; color: #fff; font-weight: 600; text-align: center; flex-shrink: 0; }
+  .arch-layer .val { flex: 1; padding: 6px 10px; color: #555; background: rgba(255,255,255,0.8); }
+  .al1 .lbl { background: #1a3a5c; } .al2 .lbl { background: #1a6a4c; } .al3 .lbl { background: #8a6a1a; }
+  .al4 .lbl { background: #8a2a1a; } .al5 .lbl { background: #5a1a7a; } .al6 .lbl { background: #1a3a6a; }
+
+  .tech-row { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tech-tag { background: #e8f4fd; color: #1a6a9a; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 10px; }
+
+  /* ===== SLIDE 5,6,7: Insight ===== */
+  .insight-slide { padding: 40px 48px; }
+  .insight-slide .slide-title { font-size: 11px; font-weight: 700; color: #29B5E8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
+  .insight-slide h2 { font-size: 24px; font-weight: 700; color: #1a1f36; margin-bottom: 24px; }
+  .insight-slide .three-col { display: flex; gap: 24px; }
+  .insight-col { flex: 1; }
+
+  .insight-box { background: #f7f9fc; border-radius: 8px; padding: 20px; height: 100%; }
+  .insight-box h3 { font-size: 14px; color: #1a1f36; margin-bottom: 10px; font-weight: 700; }
+  .insight-box ul { list-style: none; }
+  .insight-box li { font-size: 12px; color: #555; padding: 4px 0; padding-left: 14px; position: relative; line-height: 1.5; }
+  .insight-box li::before { content: ""; position: absolute; left: 0; top: 10px; width: 6px; height: 6px; background: #29B5E8; border-radius: 50%; }
+
+  .effect-box { margin-top: 16px; background: linear-gradient(135deg, #e8f8ff, #f0f4ff); border-radius: 8px; padding: 16px 20px; }
+  .effect-box .label { font-size: 10px; font-weight: 700; color: #29B5E8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .effect-box p { font-size: 12px; color: #444; line-height: 1.6; }
+
+  .metric-row { display: flex; gap: 16px; margin-top: 16px; }
+  .metric-card { flex: 1; background: #fff; border-radius: 8px; padding: 14px; text-align: center; border: 1px solid #e8edf3; }
+  .metric-card .num { font-size: 28px; font-weight: 800; color: #29B5E8; }
+  .metric-card .lbl { font-size: 10px; color: #888; margin-top: 2px; }
+
+  /* ===== SLIDE 8: Thank You ===== */
+  .s8 { background: linear-gradient(135deg, #1a1f36 0%, #29336a 100%); color: #fff; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+  .s8 h2 { font-size: 44px; font-weight: 800; margin-bottom: 16px; }
+  .s8 .contact { font-size: 16px; color: rgba(255,255,255,0.5); font-weight: 300; }
+  .s8 .stats { display: flex; gap: 40px; margin-top: 40px; }
+  .s8 .stat .num { font-size: 36px; font-weight: 800; color: #29B5E8; }
+  .s8 .stat .lbl { font-size: 11px; color: rgba(255,255,255,0.4); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: Cover -->
+<!-- ============================================================ -->
+<div class="slide s1">
+  <div class="title"><span>INSURE</span> Dashboard</div>
+  <div class="subtitle">Seoul Household Insurance Analytics Platform</div>
+  <div class="meta">
+    <b>Team INSURE</b>&nbsp;&nbsp;|&nbsp;&nbsp;Snowflake Hackathon 2026&nbsp;&nbsp;|&nbsp;&nbsp;Apr 2026
+  </div>
+  <div class="brand-bar"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 4: Problem + Architecture -->
+<!-- ============================================================ -->
+<div class="slide s4">
+  <div class="slide-title">Problem Statement & Architecture</div>
+  <h2>동산보험, 왜 시장 확대에 실패하는가?</h2>
+  <div class="two-col">
+    <div class="col-left">
+      <div class="problem-item">
+        <span class="num">1</span>
+        <h4>획일적 보험료</h4>
+        <div class="text">자치구별 화재율 최대 3.2배 차이에도 동일 보험료. 저위험 고객은 이탈, 고위험 지역은 손실률 악화.</div>
+      </div>
+      <div class="problem-item">
+        <span class="num">2</span>
+        <h4>고객 세분화 부재</h4>
+        <div class="text">1인가구 청년과 4인가구 자영업자에게 같은 상품. 라이프사이클/자산/소득 미반영으로 전환율 저조.</div>
+      </div>
+      <div class="problem-item">
+        <span class="num">3</span>
+        <h4>약관 불투명성</h4>
+        <div class="text">14개 조항, 4개 규칙의 복잡한 상호참조. 상담사도 즉답 어려워 고객 이탈 + 컴플라이언스 리스크.</div>
+      </div>
+      <div class="problem-item">
+        <span class="num">4</span>
+        <h4>시장 기회 미포착</h4>
+        <div class="text">이사 시즌 동산보험 수요 급증을 실시간 감지 못함. 부동산 거래량 기반 교차판매 타이밍 놓침.</div>
+      </div>
+      <div class="theme-box">
+        <div class="label">Theme</div>
+        <p>공공데이터 + Snowflake ML/LLM 기반 동산보험 분석 및 자동 상담 플랫폼</p>
+      </div>
+    </div>
+    <div class="col-right">
+      <div class="arch-box">
+        <div class="arch-title">Snowflake Architecture</div>
+        <div class="arch-layer al1"><div class="lbl">RAW</div><div class="val">9 tables - 화재/범죄/기상/건물/부동산/소비자사고</div></div>
+        <div class="arch-layer al2"><div class="lbl">STAGING</div><div class="val">13 views - dbt 패턴 비정규화 + 타입 정리</div></div>
+        <div class="arch-layer al3"><div class="lbl">INTERMEDIATE</div><div class="val">Risk Score (4요소 통합) + Segment + Anomaly</div></div>
+        <div class="arch-layer al4"><div class="lbl">MART</div><div class="val">District Summary + Premium Layer + Correlation</div></div>
+        <div class="arch-layer al5"><div class="lbl">RAG / GRAPH</div><div class="val">367 chunks (e5-base-v2) + 31 nodes + 34 edges</div></div>
+        <div class="arch-layer al6"><div class="lbl">ML / LLM</div><div class="val">FORECAST + ANOMALY + Mistral-Large2 + SENTIMENT</div></div>
+        <div class="tech-row">
+          <span class="tech-tag">Snowflake</span>
+          <span class="tech-tag">Cortex ML</span>
+          <span class="tech-tag">Cortex LLM</span>
+          <span class="tech-tag">Cortex Analyst</span>
+          <span class="tech-tag">Streamlit in Snowflake</span>
+          <span class="tech-tag">Snowpipe</span>
+          <span class="tech-tag">Graph RAG</span>
+          <span class="tech-tag">e5-base-v2</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="brand-bar"></div>
+  <div class="slide-num">2 / 6</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 5: Insight #1 - Premium Engine -->
+<!-- ============================================================ -->
+<div class="slide insight-slide">
+  <div class="slide-title">Insight & Recommendation #1</div>
+  <h2>7단계 보험료 산출 엔진</h2>
+  <div class="three-col">
+    <div class="insight-col">
+      <div class="insight-box">
+        <h3>핵심 인사이트</h3>
+        <ul>
+          <li>기존 동산보험은 지역/고객 무관하게 정액 보험료 적용</li>
+          <li>서울 25개구 화재율 편차 3.2배, 범죄율 편차 2.8배 확인</li>
+          <li>5구간 비선형 리스크 커브로 위험도별 차등 적용 시 손실률 23% 개선 시뮬레이션</li>
+        </ul>
+      </div>
+    </div>
+    <div class="insight-col">
+      <div class="insight-box">
+        <h3>적용 기술</h3>
+        <ul>
+          <li><b>순보험료</b> - 품목별 손해율 기반 기초 산출</li>
+          <li><b>경험보험료</b> - 자치구별 실적 반영</li>
+          <li><b>위험분류</b> - 5구간 비선형 커브 적용</li>
+          <li><b>신뢰도보정</b> - Z = min(n/1082, 1.0)</li>
+          <li><b>부담능력</b> - 월소득 0.5% 상한</li>
+          <li><b>세그먼트</b> - 10 페르소나 조정</li>
+          <li><b>최종승인</b> - 규정 준수 검증</li>
+        </ul>
+      </div>
+    </div>
+    <div class="insight-col">
+      <div class="effect-box">
+        <div class="label">기대 효과</div>
+        <p>지역별 위험도를 반영한 공정한 보험료 산정으로 <b>저위험 고객 이탈 방지</b> + <b>고위험 지역 적정 보험료 확보</b>. 7단계 전 과정이 투명하게 공개되어 금융소비자 보호 규정 준수.</p>
+      </div>
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="num">7</div>
+          <div class="lbl">산출 단계</div>
+        </div>
+        <div class="metric-card">
+          <div class="num">25</div>
+          <div class="lbl">자치구</div>
+        </div>
+        <div class="metric-card">
+          <div class="num">5</div>
+          <div class="lbl">리스크 구간</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="brand-bar"></div>
+  <div class="slide-num">3 / 6</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 6: Insight #2 - Graph RAG -->
+<!-- ============================================================ -->
+<div class="slide insight-slide">
+  <div class="slide-title">Insight & Recommendation #2</div>
+  <h2>Graph RAG 기반 약관 추론 AI 상담</h2>
+  <div class="three-col">
+    <div class="insight-col">
+      <div class="insight-box">
+        <h3>핵심 인사이트</h3>
+        <ul>
+          <li>보험 약관 14개 조항이 11개 데이터 소스, 4개 규칙, 2개 ML 모델과 복잡하게 연결</li>
+          <li>단순 키워드 검색으로는 조항 간 상호 참조 관계 파악 불가</li>
+          <li>Graph RAG로 3-hop 연결 추론 시 관련 근거 자동 수집 가능</li>
+        </ul>
+      </div>
+    </div>
+    <div class="insight-col">
+      <div class="insight-box">
+        <h3>적용 기술</h3>
+        <ul>
+          <li><b>Vector RAG</b> - 367개 약관 청크, e5-base-v2 임베딩, cosine similarity TOP-5 검색</li>
+          <li><b>Graph RAG</b> - 31 노드 + 34 엣지, 6개 관계 타입 (REFERENCES, CALCULATES, APPLIES, LIMITS, COVERS, PREDICTS)</li>
+          <li><b>LLM</b> - Mistral-Large2 기반 답변 생성, 약관 원문 근거 강제 참조</li>
+          <li><b>BFS 탐색</b> - 3-hop 이내 연결 경로 자동 추출</li>
+        </ul>
+      </div>
+    </div>
+    <div class="insight-col">
+      <div class="effect-box">
+        <div class="label">기대 효과</div>
+        <p>"보험료가 왜 이 금액인가요?" 질문에 <b>약관 조항 + 데이터 근거 + 산출 규칙</b>을 연결하여 답변. Hallucination 방지 + 컴플라이언스 리스크 제거. 상담사 업무 부담 대폭 경감.</p>
+      </div>
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="num">31</div>
+          <div class="lbl">Graph Nodes</div>
+        </div>
+        <div class="metric-card">
+          <div class="num">34</div>
+          <div class="lbl">Edges</div>
+        </div>
+        <div class="metric-card">
+          <div class="num">367</div>
+          <div class="lbl">RAG Chunks</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="brand-bar"></div>
+  <div class="slide-num">4 / 6</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7: Insight #3 - Persona + Market Intelligence -->
+<!-- ============================================================ -->
+<div class="slide insight-slide">
+  <div class="slide-title">Insight & Recommendation #3</div>
+  <h2>10 페르소나 세분화 + 시장 인텔리전스</h2>
+  <div class="three-col">
+    <div class="insight-col">
+      <div class="insight-box">
+        <h3>핵심 인사이트</h3>
+        <ul>
+          <li>동산보험 고객을 5차원(라이프사이클, 자산소비, 주거, 직업, 위험성향)으로 분류</li>
+          <li>10개 대표 페르소나별 맞춤 상품/보장한도/리스크 팩터 자동 적용</li>
+          <li>부동산 거래량 Z-Score 이상치 탐지로 이사 시즌 교차판매 타이밍 자동 포착</li>
+        </ul>
+      </div>
+    </div>
+    <div class="insight-col">
+      <div class="insight-box">
+        <h3>적용 기술</h3>
+        <ul>
+          <li><b>Cortex ML FORECAST</b> - 화재 발생률 시계열 예측 (95% 신뢰구간)</li>
+          <li><b>ANOMALY_DETECTION</b> - 부동산 거래량 급등 자동 감지</li>
+          <li><b>SENTIMENT</b> - 소비자 사고 심각도 자동 분류</li>
+          <li><b>Cortex Analyst</b> - 자연어 쿼리 ("강남구 평균 동산 가치는?")</li>
+          <li><b>REGR_SLOPE</b> - 추세 기울기 분석</li>
+        </ul>
+      </div>
+    </div>
+    <div class="insight-col">
+      <div class="effect-box">
+        <div class="label">기대 효과</div>
+        <p>사회초년생에게는 소액 필수보장, 자영업자에게는 고가품 확장보장 등 <b>페르소나별 최적 상품 자동 추천</b>. 이사 시즌 사전 감지로 <b>교차판매 전환율 향상</b>. 시장 규모 자치구별 자동 산출.</p>
+      </div>
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="num">10</div>
+          <div class="lbl">Personas</div>
+        </div>
+        <div class="metric-card">
+          <div class="num">5</div>
+          <div class="lbl">Dimensions</div>
+        </div>
+        <div class="metric-card">
+          <div class="num">4</div>
+          <div class="lbl">Cortex ML</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="brand-bar"></div>
+  <div class="slide-num">5 / 6</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 8: Thank You -->
+<!-- ============================================================ -->
+<div class="slide s8">
+  <h2>THANK YOU</h2>
+  <div class="contact">Team INSURE&nbsp;&nbsp;|&nbsp;&nbsp;Snowflake Hackathon 2026</div>
+  <div class="stats">
+    <div class="stat"><div class="num">25</div><div class="lbl">Districts</div></div>
+    <div class="stat"><div class="num">7</div><div class="lbl">Premium Stages</div></div>
+    <div class="stat"><div class="num">10</div><div class="lbl">Personas</div></div>
+    <div class="stat"><div class="num">367</div><div class="lbl">RAG Chunks</div></div>
+    <div class="stat"><div class="num">31</div><div class="lbl">Graph Nodes</div></div>
+    <div class="stat"><div class="num">6</div><div class="lbl">Data Layers</div></div>
+  </div>
+  <div class="brand-bar"></div>
+</div>
+
+</body>
+</html>
