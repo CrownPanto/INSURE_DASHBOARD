@@ -118,7 +118,7 @@ real_data AS (
 ),
 
 -- (B) 서울 전체 통계 — YEAR_MONTH별 평균 (missing 구 대체용)
--- ★ FIX: 전체 평균이 아닌 월별 평균으로 계산해야 다른 달도 올바른 값 사용
+-- ★ v2.5 FIX: 전체 평균이 아닌 월별 평균으로 계산해야 다른 달도 올바른 값 사용
 seoul_avg AS (
     SELECT YEAR_MONTH,
         AVG(DISTRICT_AVG_INCOME) AS avg_income,
@@ -133,7 +133,7 @@ seoul_avg AS (
 -- (C) 실제 데이터가 있는 구 목록
 covered_gu AS (SELECT DISTINCT GU_NAME FROM real_data WHERE GU_NAME IS NOT NULL),
 
--- (D) 누락된 구 처리 — ★ FIX: '202512' 하드코딩 제거, 모든 YEAR_MONTH에 대해 생성
+-- (D) 누락된 구 처리 — ★ v2.5 FIX: '202512' 하드코딩 제거, 모든 YEAR_MONTH에 대해 생성
 missing_gu AS (
     SELECT g.GU_NAME, ym.YEAR_MONTH
     FROM INSURE_DB.STAGING.GU_CODE_MAPPING g
@@ -156,7 +156,7 @@ estimated_data AS (
         sa.avg_premium AS AVG_BASE_PREMIUM,
         sa.avg_credit AS AVG_CREDIT_SCORE
     FROM missing_gu mg
-    -- ★ FIX: CROSS JOIN → YEAR_MONTH 기준 JOIN (월별 서울 평균 사용)
+    -- ★ v2.5 FIX: CROSS JOIN → YEAR_MONTH 기준 JOIN (월별 서울 평균 사용)
     JOIN seoul_avg sa ON mg.YEAR_MONTH = sa.YEAR_MONTH
     LEFT JOIN (
         SELECT dm.CITY_KOR_NAME AS GU_NAME, COUNT(DISTINCT dm.DISTRICT_CODE) * 8500 AS EST_POPULATION
@@ -205,7 +205,7 @@ seoul_apt_avg AS (
     FROM INSURE_DB.STAGING.STG_APT_PRICE
 ),
 
--- (I) 보험료 IQR 기반 상한/하한 — ★ FIX: YEAR_MONTH별로 계산
+-- (I) 보험료 IQR 기반 상한/하한 — ★ v2.5 FIX: YEAR_MONTH별로 계산
 premium_bounds AS (
     SELECT YEAR_MONTH,
         PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY d.AVG_BASE_PREMIUM) AS q1,
@@ -249,7 +249,7 @@ assembled AS (
     LEFT JOIN latest_risk lr ON TRIM(d.GU_NAME) = lr.DISTRICT_NAME
     LEFT JOIN apt_price ap ON TRIM(d.GU_NAME) = TRIM(ap.GU_NAME)
     CROSS JOIN seoul_apt_avg sa
-    -- ★ FIX: CROSS JOIN → YEAR_MONTH 기준 JOIN (월별 IQR 적용)
+    -- ★ v2.5 FIX: CROSS JOIN → YEAR_MONTH 기준 JOIN (월별 IQR 적용)
     JOIN premium_bounds pb ON d.YEAR_MONTH = pb.YEAR_MONTH
     WHERE d.GU_NAME IS NOT NULL
 )
