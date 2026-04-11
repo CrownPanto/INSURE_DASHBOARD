@@ -172,13 +172,15 @@ SELECT
     COALESCE(lr.THEFT_RISK_SCORE, 0) AS THEFT_RISK_SCORE,
     COALESCE(lr.BUILDING_RISK_SCORE, 0) AS BUILDING_RISK_SCORE,
     COALESCE(lr.WEATHER_RISK_SCORE, 0) AS WEATHER_RISK_SCORE,
-    -- IQR 클램핑 + 선형 리스크 보정 (1 + risk/200)
+    -- ★ v2.5 FIX: IQR 클램핑 + 비선형(제곱) 리스크 보정
+    -- 기존 (1 + risk/200) 선형 → (1 + risk²/8000) 제곱함수로 변경
+    -- 고위험 구간에서 보험료가 가파르게 상승하여 지역별 편차 확대 (~14%)
     ROUND(
         LEAST(
             GREATEST(d.AVG_BASE_PREMIUM, pb.q1 - 1.5 * (pb.q3 - pb.q1)),
             pb.q3 + 1.5 * (pb.q3 - pb.q1)
         )
-        * (1 + COALESCE(lr.COMPOSITE_RISK_SCORE, 30) / 200.0)
+        * (1 + POWER(COALESCE(lr.COMPOSITE_RISK_SCORE, 30), 2) / 8000.0)
         * CASE WHEN d.AVG_CREDIT_SCORE >= 800 THEN 0.90
                WHEN d.AVG_CREDIT_SCORE >= 700 THEN 0.95
                ELSE 1.05 END
@@ -277,23 +279,18 @@ real_data AS (
     LEFT JOIN INSURE_DB.STAGING.GU_CODE_MAPPING g ON LEFT(m.DISTRICT_CODE::VARCHAR, 5) = g.GU_CODE
     GROUP BY m.DISTRICT_CODE, dm.DISTRICT_KOR_NAME, COALESCE(g.GU_NAME, dm.CITY_KOR_NAME), m.YEAR_MONTH
 ),
--- (B) 서울 전체 통계 — YEAR_MONTH별 평균 (missing 구 대체용)
--- ★ v2.5 FIX: 전체 평균이 아닌 월별 평균으로 계산해야 다른 달도 올바른 값 사용
+-- (B) 서울 전체 통계 (missing 구 대체용)
 seoul_avg AS (
-    SELECT YEAR_MONTH,
-        AVG(DISTRICT_AVG_INCOME) AS avg_income, AVG(DISTRICT_AVG_ASSET) AS avg_asset,
+    SELECT AVG(DISTRICT_AVG_INCOME) AS avg_income, AVG(DISTRICT_AVG_ASSET) AS avg_asset,
         AVG(AVG_MOVABLE_ASSET) AS avg_movable,
-        MEDIAN(AVG_BASE_PREMIUM) AS avg_premium,
+        MEDIAN(AVG_BASE_PREMIUM) AS avg_premium,   -- ★ FIX: MEDIAN
         AVG(AVG_CREDIT_SCORE) AS avg_credit
     FROM real_data
-    GROUP BY YEAR_MONTH
 ),
 covered_gu AS (SELECT DISTINCT GU_NAME FROM real_data WHERE GU_NAME IS NOT NULL),
--- ★ v2.5 FIX: '202512' 하드코딩 제거 → 모든 YEAR_MONTH에 누락 구 생성
 missing_gu AS (
-    SELECT g.GU_NAME, ym.YEAR_MONTH
+    SELECT g.GU_NAME, '202512' AS YEAR_MONTH
     FROM INSURE_DB.STAGING.GU_CODE_MAPPING g
-    CROSS JOIN (SELECT DISTINCT YEAR_MONTH FROM real_data) ym
     WHERE g.GU_NAME NOT IN (SELECT GU_NAME FROM covered_gu)
 ),
 estimated_data AS (
@@ -302,9 +299,7 @@ estimated_data AS (
         sa.avg_income AS DISTRICT_AVG_INCOME, sa.avg_asset AS DISTRICT_AVG_ASSET,
         sa.avg_movable AS AVG_MOVABLE_ASSET, sa.avg_premium AS AVG_BASE_PREMIUM,
         sa.avg_credit AS AVG_CREDIT_SCORE
-    FROM missing_gu mg
-    -- ★ v2.5 FIX: CROSS JOIN → YEAR_MONTH 기준 JOIN (월별 서울 평균 사용)
-    JOIN seoul_avg sa ON mg.YEAR_MONTH = sa.YEAR_MONTH
+    FROM missing_gu mg CROSS JOIN seoul_avg sa
     LEFT JOIN (
         SELECT dm.CITY_KOR_NAME AS GU_NAME, COUNT(DISTINCT dm.DISTRICT_CODE) * 8500 AS EST_POPULATION
         FROM INSURE_DB.STAGING.STG_DISTRICT_MASTER dm
@@ -338,13 +333,12 @@ seoul_apt_avg AS (
            ROUND(AVG(JEONSE_PRICE_PER_PYEONG), 0) AS avg_jeonse
     FROM INSURE_DB.STAGING.STG_APT_PRICE
 ),
--- ★ v2.5 FIX: IQR 기반 이상값 상한/하한 — YEAR_MONTH별로 계산
+-- ★ FIX: IQR 기반 이상값 상한/하한 계산
 premium_bounds AS (
-    SELECT YEAR_MONTH,
+    SELECT
         PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY AVG_BASE_PREMIUM) AS q1,
         PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY AVG_BASE_PREMIUM) AS q3
     FROM all_districts
-    GROUP BY YEAR_MONTH
 )
 SELECT d.DISTRICT_CODE, d.DISTRICT_NAME, d.GU_NAME, d.YEAR_MONTH,
     d.ACTIVE_SEGMENTS, d.TOTAL_POPULATION,
@@ -377,8 +371,7 @@ FROM all_districts d
 LEFT JOIN latest_risk lr ON TRIM(d.GU_NAME) = lr.DISTRICT_NAME
 LEFT JOIN apt_price ap ON TRIM(d.GU_NAME) = TRIM(ap.GU_NAME)
 CROSS JOIN seoul_apt_avg sa
--- ★ v2.5 FIX: CROSS JOIN → YEAR_MONTH 기준 JOIN (월별 IQR 적용)
-JOIN premium_bounds pb ON d.YEAR_MONTH = pb.YEAR_MONTH
+CROSS JOIN premium_bounds pb
 WHERE d.GU_NAME IS NOT NULL;
 
 -- Recreate premium simulation view
