@@ -172,15 +172,13 @@ SELECT
     COALESCE(lr.THEFT_RISK_SCORE, 0) AS THEFT_RISK_SCORE,
     COALESCE(lr.BUILDING_RISK_SCORE, 0) AS BUILDING_RISK_SCORE,
     COALESCE(lr.WEATHER_RISK_SCORE, 0) AS WEATHER_RISK_SCORE,
-    -- ★ v2.5 FIX: IQR 클램핑 + 비선형(제곱) 리스크 보정
-    -- 기존 (1 + risk/200) 선형 → (1 + risk²/8000) 제곱함수로 변경
-    -- 고위험 구간에서 보험료가 가파르게 상승하여 지역별 편차 확대 (~14%)
+    -- IQR 클램핑 + 선형 리스크 보정 (1 + risk/200)
     ROUND(
         LEAST(
             GREATEST(d.AVG_BASE_PREMIUM, pb.q1 - 1.5 * (pb.q3 - pb.q1)),
             pb.q3 + 1.5 * (pb.q3 - pb.q1)
         )
-        * (1 + POWER(COALESCE(lr.COMPOSITE_RISK_SCORE, 30), 2) / 8000.0)
+        * (1 + COALESCE(lr.COMPOSITE_RISK_SCORE, 30) / 200.0)
         * CASE WHEN d.AVG_CREDIT_SCORE >= 800 THEN 0.90
                WHEN d.AVG_CREDIT_SCORE >= 700 THEN 0.95
                ELSE 1.05 END

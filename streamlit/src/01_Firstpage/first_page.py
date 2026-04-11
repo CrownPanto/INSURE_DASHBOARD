@@ -167,7 +167,6 @@ def show_page(session, selected_ym):
     st.caption("구의 색상 = 위험도 | 마우스 오버 시 보험료 및 위험도 정보 확인")
 
     try:
-        # 서울시 GeoJSON 데이터 로드 (로컬 파일)
         import os
         geojson_path = os.path.join(os.path.dirname(__file__), "../../data/seoul_gu_boundaries.geojson")
 
@@ -177,13 +176,13 @@ def show_page(session, selected_ym):
 
         st.caption("✅ 서울시 25개 자치구 경계 데이터 로드 성공")
 
-        # GeoJSON의 구 이름과 데이터 맞추기
-        # GeoJSON에는 properties.name에 구 이름이 있음
-        name_mapping = {}
-        for feature in geojson_data["features"]:
-            name_mapping[feature["properties"]["name"]] = feature["properties"]["name"]
+        # 커스텀 컬러스케일: 청록(저위험) → 보라(중간) → 진빨강(고위험)
+        custom_scale = [
+            [0.0,  "#00E5FF"],
+            [0.5,  "#CC00FF"],
+            [1.0,  "#FF1744"],
+        ]
 
-        # Choropleth 맵 생성
         fig_map = px.choropleth_mapbox(
             agg_df,
             geojson=geojson_data,
@@ -194,37 +193,51 @@ def show_page(session, selected_ym):
             hover_data={
                 "GU_NAME": False,
                 "COMPOSITE_RISK_SCORE": ":.1f",
-                "ADJUSTED_PREMIUM_MONTHLY": "₩{:,.0f}",
+                "ADJUSTED_PREMIUM_MONTHLY": ":.0f",
                 "RISK_GRADE": True,
             },
-            color_continuous_scale="RdYlGn_r",  # 빨강(고위험) ~ 초록(저위험)
-            mapbox_style="carto-positron",
+            color_continuous_scale=custom_scale,
+            mapbox_style="carto-darkmatter",
             zoom=10.5,
             center={"lat": 37.5665, "lon": 126.9780},
-            labels={"COMPOSITE_RISK_SCORE": "위험도"},
+            labels={
+                "COMPOSITE_RISK_SCORE": "위험도",
+                "ADJUSTED_PREMIUM_MONTHLY": "월보험료",
+                "RISK_GRADE": "등급",
+            },
         )
 
-        # 경계선 명확하게 표시
         fig_map.update_traces(
-            marker_line_width=2.5,
-            marker_line_color="#1f2937",
+            marker_line_width=2,
+            marker_line_color="rgba(255,255,255,0.6)",
+            marker_opacity=0.85,
         )
 
         fig_map.update_layout(
-            height=700,
+            height=680,
             margin=dict(l=0, r=0, t=0, b=0),
             mapbox=dict(
-                style="carto-positron",
+                style="carto-darkmatter",
                 center={"lat": 37.5665, "lon": 126.9780},
                 zoom=10.5,
             ),
             coloraxis_colorbar=dict(
-                title="위험도",
-                thickness=15,
-                len=0.7,
-                x=1.02,
+                title=dict(text="위험도", font=dict(color="#f1f5f9", size=13)),
+                tickfont=dict(color="#94a3b8", size=11),
+                thickness=14,
+                len=0.65,
+                x=1.01,
+                bgcolor="rgba(10,15,30,0.7)",
+                bordercolor="rgba(255,255,255,0.15)",
+                borderwidth=1,
             ),
+            paper_bgcolor="rgba(0,0,0,0)",
             font=dict(color="#f1f5f9", size=11),
+            hoverlabel=dict(
+                bgcolor="rgba(10,15,30,0.93)",
+                bordercolor="#334155",
+                font=dict(color="#f1f5f9", size=13),
+            ),
         )
 
         st.plotly_chart(fig_map, use_container_width=True)
@@ -239,108 +252,95 @@ def show_page(session, selected_ym):
     st.subheader("위험도 vs 보험료 (상관관계 분석)")
     st.caption("위험도가 높을수록 보험료가 비싼가? 데이터로 확인하세요")
 
-    corr = agg_df["COMPOSITE_RISK_SCORE"].corr(agg_df["ADJUSTED_PREMIUM_MONTHLY"])
     avg_risk = agg_df["COMPOSITE_RISK_SCORE"].mean()
 
-    # ── IQR 기반 outlier 탐지 ──
+    # IQR outlier 제거
     Q1 = agg_df["ADJUSTED_PREMIUM_MONTHLY"].quantile(0.25)
     Q3 = agg_df["ADJUSTED_PREMIUM_MONTHLY"].quantile(0.75)
-    IQR = Q3 - Q1
-    y_upper = Q3 + 1.5 * IQR
+    y_upper = Q3 + 1.5 * (Q3 - Q1)
+    df_plot = agg_df[agg_df["ADJUSTED_PREMIUM_MONTHLY"] <= y_upper].copy()
 
-    df_main_view = agg_df[agg_df["ADJUSTED_PREMIUM_MONTHLY"] <= y_upper]
-    df_outliers  = agg_df[agg_df["ADJUSTED_PREMIUM_MONTHLY"] >  y_upper]
+    corr_main = df_plot["COMPOSITE_RISK_SCORE"].corr(df_plot["ADJUSTED_PREMIUM_MONTHLY"])
 
-    # ── Scatter: outlier 제외한 메인 뷰 ──
-    fig = px.scatter(
-        df_main_view,
-        x="COMPOSITE_RISK_SCORE",
-        y="ADJUSTED_PREMIUM_MONTHLY",
-        size="TOTAL_POPULATION",
-        color="COMPOSITE_RISK_SCORE",
-        hover_name="GU_NAME",
-        text="GU_NAME",
-        size_max=40,
-        color_continuous_scale=[[0, "#10b981"], [0.5, "#f59e0b"], [1, "#ef4444"]],
-    )
-
-    # ── outlier는 별도 마커로 표시 ──
-    for _, row in df_outliers.iterrows():
-        fig.add_annotation(
-            x=row["COMPOSITE_RISK_SCORE"],
-            y=y_upper,
-            text=f"⚠️ {row['GU_NAME']} ₩{row['ADJUSTED_PREMIUM_MONTHLY']:,.0f}",
-            showarrow=True, arrowhead=2, arrowcolor="#f59e0b",
-            font=dict(color="#f59e0b", size=10, family="monospace"),
-            bgcolor="rgba(245,158,11,0.15)", bordercolor="#f59e0b",
-            borderwidth=1, borderpad=6,
-            ax=0, ay=-40,
-        )
-
-    # ── 추세선 (메인 뷰 기준) ──
-    z = np.polyfit(df_main_view["COMPOSITE_RISK_SCORE"], df_main_view["ADJUSTED_PREMIUM_MONTHLY"], 1)
+    # 회귀선 + 95% CI
+    x_arr = df_plot["COMPOSITE_RISK_SCORE"].values
+    y_arr = df_plot["ADJUSTED_PREMIUM_MONTHLY"].values
+    z = np.polyfit(x_arr, y_arr, 1)
     p_fn = np.poly1d(z)
-    x_tr = np.linspace(df_main_view["COMPOSITE_RISK_SCORE"].min(), df_main_view["COMPOSITE_RISK_SCORE"].max(), 100)
+    x_line = np.linspace(x_arr.min(), x_arr.max(), 200)
+    y_line = p_fn(x_line)
+    n, x_mean = len(x_arr), x_arr.mean()
+    s_err = np.sqrt(np.sum((y_arr - p_fn(x_arr)) ** 2) / (n - 2))
+    se = s_err * np.sqrt(1/n + (x_line - x_mean)**2 / np.sum((x_arr - x_mean)**2))
+
+    fig = go.Figure()
+
+    # CI 밴드
     fig.add_trace(go.Scatter(
-        x=x_tr, y=p_fn(x_tr),
-        name="추세선",
-        line=dict(color="#6366f1", width=2, dash="solid"),
-        mode="lines",
-        hovertemplate="추세선 | 위험도 %{x:.1f} → 예상 ₩%{y:,.0f}<extra></extra>",
+        x=np.concatenate([x_line, x_line[::-1]]),
+        y=np.concatenate([y_line + 1.96*se, (y_line - 1.96*se)[::-1]]),
+        fill="toself", fillcolor="rgba(99,102,241,0.15)",
+        line=dict(width=0), showlegend=True, name="95% 신뢰구간", hoverinfo="skip",
     ))
 
-    # ── 평균 기준선 ──
-    fig.add_hline(y=avg_premium, line_dash="dot", line_color="rgba(148,163,184,0.5)",
-                  annotation_text=f"평균보험료 ₩{avg_premium:,.0f}", annotation_position="right",
-                  annotation_font=dict(color="#94a3b8", size=10))
-    fig.add_vline(x=avg_risk, line_dash="dot", line_color="rgba(148,163,184,0.5)",
-                  annotation_text=f"평균위험도 {avg_risk:.1f}점", annotation_position="top",
-                  annotation_font=dict(color="#94a3b8", size=10))
+    # 회귀선
+    fig.add_trace(go.Scatter(
+        x=x_line, y=y_line, mode="lines",
+        line=dict(color="#818cf8", width=2),
+        name=f"회귀선  r = {corr_main:+.3f}  R² = {corr_main**2:.3f}",
+        hovertemplate="위험도 %{x:.1f} → 예상 ₩%{y:,.0f}<extra>회귀선</extra>",
+    ))
 
-    # ── 사분면 배경 색칠 ──
-    x_min, x_max = df_main_view["COMPOSITE_RISK_SCORE"].min(), df_main_view["COMPOSITE_RISK_SCORE"].max()
-    y_min = 0
-    for (x0, x1, y0, y1, color, label) in [
-        (x_min, avg_risk, avg_premium, y_upper,  "rgba(239,68,68,0.06)",  "저위험·고보험료"),
-        (avg_risk, x_max, avg_premium, y_upper,  "rgba(239,68,68,0.12)",  "고위험·고보험료"),
-        (x_min, avg_risk, y_min, avg_premium,    "rgba(16,185,129,0.06)", "저위험·저보험료"),
-        (avg_risk, x_max, y_min, avg_premium,    "rgba(245,158,11,0.08)", "고위험·저보험료"),
-    ]:
-        fig.add_shape(type="rect", x0=x0, x1=x1, y0=y0, y1=y1,
-                      fillcolor=color, line_width=0, layer="below")
+    # 평균 기준선
+    fig.add_hline(y=avg_premium, line_dash="dot", line_color="rgba(148,163,184,0.35)",
+                  annotation_text=f"평균보험료 ₩{avg_premium:,.0f}",
+                  annotation_position="top right",
+                  annotation_font=dict(color="#64748b", size=9))
+    fig.add_vline(x=avg_risk, line_dash="dot", line_color="rgba(148,163,184,0.35)",
+                  annotation_text=f"평균위험도 {avg_risk:.1f}점",
+                  annotation_position="top right",
+                  annotation_font=dict(color="#64748b", size=9))
 
-    # ── Y축 범위 고정 (outlier 공간 확보) ──
-    fig.update_yaxes(range=[0, y_upper * 1.15],
-                     title_text="월 보험료 (원) →",
-                     title_font=dict(color="#cbd5e1", size=12))
-    fig.update_xaxes(title_text="위험도 점수 →",
-                     title_font=dict(color="#cbd5e1", size=12))
-
-    # ── 상관계수 박스 ──
-    corr_main = df_main_view["COMPOSITE_RISK_SCORE"].corr(df_main_view["ADJUSTED_PREMIUM_MONTHLY"])
-    fig.add_annotation(
-        text=f"<b>상관관계 통계</b><br>"
-             f"r = <b>{corr_main:.3f}</b>  R² = <b>{corr_main**2:.3f}</b><br>"
-             f"{'✅ 강한 양의 상관' if corr_main>0.7 else '📈 중간 상관' if corr_main>0.4 else '➡️ 약한 상관' if corr_main>0 else '📉 음의 상관'}",
-        xref="paper", yref="paper", x=0.02, y=0.98,
-        showarrow=False, bgcolor="rgba(15,23,42,0.95)", bordercolor="#4f46e5",
-        borderwidth=2, borderpad=10, font=dict(size=10, color="#cbd5e1", family="monospace"),
-        align="left",
-    )
-    if len(df_outliers) > 0:
-        fig.add_annotation(
-            text=f"⚠️ 이상치 {len(df_outliers)}개 제외 후 분석<br>(화살표로 위치 표시)",
-            xref="paper", yref="paper", x=0.98, y=0.98,
-            showarrow=False, bgcolor="rgba(245,158,11,0.15)", bordercolor="#f59e0b",
-            borderwidth=1, borderpad=8, font=dict(size=9, color="#fcd34d"),
-            align="right", xanchor="right",
-        )
+    # 점 + 구 이름 레이블 (위험도 낮→높: 초록→주황→빨강)
+    r_min, r_max = x_arr.min(), x_arr.max()
+    for _, row in df_plot.iterrows():
+        t = (row["COMPOSITE_RISK_SCORE"] - r_min) / (r_max - r_min) if r_max > r_min else 0.5
+        r_ch = max(0, min(255, int(16 + 223*t)))
+        g_ch = max(0, min(255, int(185 - 117*t)))
+        b_ch = max(0, min(255, int(129 - 165*t)))
+        dot_color = f"rgba({r_ch}, {g_ch}, {b_ch}, 0.9)"
+        fig.add_trace(go.Scatter(
+            x=[row["COMPOSITE_RISK_SCORE"]],
+            y=[row["ADJUSTED_PREMIUM_MONTHLY"]],
+            mode="markers+text",
+            marker=dict(color=dot_color, size=10, line=dict(color="white", width=0.8)),
+            text=[row["GU_NAME"]],
+            textposition="top center",
+            textfont=dict(size=8, color="#94a3b8"),
+            showlegend=False,
+            hovertemplate=(
+                f"<b>{row['GU_NAME']}</b><br>"
+                f"위험도: {row['COMPOSITE_RISK_SCORE']:.2f}점<br>"
+                f"보험료: ₩{row['ADJUSTED_PREMIUM_MONTHLY']:,.0f}<extra></extra>"
+            ),
+        ))
 
     fig.update_layout(
-        height=580, plot_bgcolor="#0f1117", paper_bgcolor="#0f1117",
-        font=dict(color="#f1f5f9", size=11), showlegend=False, hovermode="closest",
+        height=520, plot_bgcolor="#0f1117", paper_bgcolor="#0f1117",
+        font=dict(color="#f1f5f9", size=11),
+        hovermode="closest",
+        legend=dict(
+            bgcolor="rgba(15,23,42,0.85)", bordercolor="#4f46e5", borderwidth=1,
+            font=dict(size=11), x=0.02, y=0.98, xanchor="left", yanchor="top",
+        ),
+        xaxis=dict(title="위험도 점수", gridcolor="rgba(255,255,255,0.05)",
+                   title_font=dict(color="#cbd5e1")),
+        yaxis=dict(title="월 보험료 (원)", gridcolor="rgba(255,255,255,0.05)",
+                   title_font=dict(color="#cbd5e1")),
+        margin=dict(t=20, b=40, l=60, r=20),
     )
     st.plotly_chart(fig, use_container_width=True)
+    st.caption("점 색상: 초록=저위험 → 빨강=고위험 | 보라 밴드=95% 신뢰구간 | 선이 우상향할수록 위험도↑ 보험료↑ 상관 강함")
 
     # 사분면 요약 카드
     quad_cols = st.columns(4)
