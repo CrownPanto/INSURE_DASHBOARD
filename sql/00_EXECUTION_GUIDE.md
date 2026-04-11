@@ -71,6 +71,8 @@
 |------|------|------|------|
 | 18 | `23_PHASE3_INTEGRATION.sql` | RAG↔Graph 브릿지 + 통합검색 SP + Agent Tool 4개 | 아래 테스트 참조 |
 | 19 | `31_SP_INSURE_ADVISOR.sql` | SP_ASK_INSURE_ADVISOR 프로시저 | 아래 테스트 참조 |
+| 20 | `32_CORTEX_FORECAST_VERIFIED.sql` | FORECAST + ANOMALY_DETECTION 실행 검증 | `SELECT * FROM V_FIRE_FORECAST_V2 LIMIT 5;` |
+| 21 | `33_CORTEX_AGENT_UNIFIED.sql` | 통합 Agent SP (DATA/POLICY/GRAPH 라우팅) | `CALL SP_INSURE_AGENT('강남구 보험료는?');` |
 
 ### Phase 6 테스트 시나리오
 ```sql
@@ -99,6 +101,34 @@ CALL SP_ASK_INSURE_ADVISOR('강남구 동산보험 추천해주세요');
 | `09_EXTERNAL_STAGE_SNOWPIPE.sql` | C-4 수정 완료, 소스 뷰 생성 후 실행 |
 | `11~19` | 버전 업그레이드 이력. 27번에 통합됨 |
 | `sql/archive/*` | 구버전 아카이브. 실행 금지 |
+
+---
+
+### Phase 6 추가 테스트 (32, 33번)
+```sql
+-- FORECAST 모델 확인
+SHOW SNOWFLAKE.ML.FORECAST LIKE 'insure_fire_forecast_v2' IN SCHEMA INSURE_DB.ANALYTICS;
+SELECT * FROM INSURE_DB.ANALYTICS.V_FIRE_FORECAST_V2 LIMIT 5;
+
+-- ANOMALY 모델 확인
+SELECT * FROM INSURE_DB.ANALYTICS.V_TRANSACTION_ANOMALY_V2 WHERE is_anomaly = TRUE LIMIT 5;
+
+-- 통합 Agent 테스트
+CALL INSURE_DB.ANALYTICS.SP_INSURE_AGENT('강남구 평균 보험료는 얼마인가요?');  -- DATA
+CALL INSURE_DB.ANALYTICS.SP_INSURE_AGENT('화재 시 보장 범위는?');              -- POLICY
+CALL INSURE_DB.ANALYTICS.SP_INSURE_AGENT('보험료 산정에 영향주는 데이터는?');    -- GRAPH
+```
+
+---
+
+## 로컬 테스트 (Snowflake 없이)
+```bash
+cd scripts
+pip install -r requirements.txt
+python test_all.py          # 68개 자동 테스트 (Graph RAG + Premium + SQL 무결성)
+python graph_rag_test.py    # Graph RAG 8개 검증
+python graph_rag_visualize.py  # 그래프 시각화 PNG 생성
+```
 
 ---
 

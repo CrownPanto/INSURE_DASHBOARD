@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INSURE - Pitch Deck & Demo Plan</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', -apple-system, sans-serif; background: #0a0a1a; color: #e0e0e0; }
+  .slide { min-height: 100vh; padding: 60px 80px; display: flex; flex-direction: column; justify-content: center; border-bottom: 1px solid #1a1a3a; position: relative; }
+  .slide-number { position: absolute; top: 24px; right: 40px; color: #333; font-size: 14px; font-weight: 600; }
+
+  /* Slide 1: Cover */
+  .cover { background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 100%); text-align: center; }
+  .cover h1 { font-size: 56px; color: #fff; margin-bottom: 16px; letter-spacing: -1px; }
+  .cover h1 span { color: #4A90D9; }
+  .cover .tagline { font-size: 22px; color: #888; margin-bottom: 40px; }
+  .cover .tags { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .cover .tag { background: rgba(74, 144, 217, 0.15); border: 1px solid rgba(74, 144, 217, 0.3); padding: 6px 16px; border-radius: 20px; font-size: 13px; color: #4A90D9; }
+
+  /* Slide 2: Problem */
+  .problem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 32px; }
+  .problem-card { background: rgba(231, 76, 60, 0.08); border: 1px solid rgba(231, 76, 60, 0.2); border-radius: 12px; padding: 24px; }
+  .problem-card .icon { font-size: 28px; margin-bottom: 8px; }
+  .problem-card h3 { color: #E74C3C; font-size: 16px; margin-bottom: 8px; }
+  .problem-card p { color: #999; font-size: 14px; line-height: 1.6; }
+
+  /* Common */
+  h2 { font-size: 36px; color: #fff; margin-bottom: 8px; }
+  h2 span { color: #4A90D9; }
+  .section-sub { color: #666; font-size: 16px; margin-bottom: 32px; }
+
+  /* Slide 3: Solution */
+  .solution-flow { display: flex; gap: 0; align-items: stretch; margin-top: 32px; }
+  .flow-step { flex: 1; background: #111128; border-radius: 12px; padding: 20px; text-align: center; position: relative; }
+  .flow-step:not(:last-child)::after { content: "->"; position: absolute; right: -16px; top: 50%; transform: translateY(-50%); color: #4A90D9; font-size: 20px; font-weight: bold; z-index: 1; }
+  .flow-step .step-num { font-size: 11px; color: #4A90D9; font-weight: bold; margin-bottom: 8px; }
+  .flow-step h4 { color: #fff; font-size: 14px; margin-bottom: 6px; }
+  .flow-step p { color: #777; font-size: 12px; }
+  .flow-gap { width: 32px; }
+
+  /* Slide 4: Tech */
+  .tech-layers { margin-top: 32px; }
+  .tech-layer { display: flex; align-items: center; margin: 8px 0; border-radius: 8px; overflow: hidden; }
+  .tech-label { width: 180px; padding: 14px 16px; font-size: 13px; font-weight: 600; color: #fff; flex-shrink: 0; }
+  .tech-content { flex: 1; padding: 14px 16px; font-size: 13px; color: #ccc; background: rgba(255,255,255,0.03); }
+  .l1 .tech-label { background: #1a3a5c; }
+  .l2 .tech-label { background: #1a4a3c; }
+  .l3 .tech-label { background: #4a3a1a; }
+  .l4 .tech-label { background: #4a1a1a; }
+  .l5 .tech-label { background: #3a1a4a; }
+  .l6 .tech-label { background: #1a2a4a; }
+
+  /* Slide 5: Differentiators */
+  .diff-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 32px; }
+  .diff-card { background: #111128; border-radius: 12px; padding: 24px; border-top: 3px solid #4A90D9; }
+  .diff-card h3 { color: #fff; font-size: 15px; margin-bottom: 8px; }
+  .diff-card p { color: #888; font-size: 13px; line-height: 1.6; }
+  .diff-card .metric { font-size: 28px; font-weight: bold; color: #4A90D9; margin-bottom: 4px; }
+
+  /* Slide 6: Value Assessment */
+  .value-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 32px; }
+  .value-card { background: #111128; border-radius: 12px; padding: 24px; }
+  .value-card h3 { font-size: 15px; margin-bottom: 12px; }
+  .value-card .score { font-size: 48px; font-weight: bold; margin-bottom: 4px; }
+  .value-card .score-label { font-size: 12px; color: #666; }
+  .value-card ul { list-style: none; margin-top: 12px; }
+  .value-card li { padding: 4px 0; font-size: 13px; color: #999; }
+  .value-card li::before { content: "+ "; color: #50C878; font-weight: bold; }
+  .value-card li.minus::before { content: "- "; color: #E74C3C; }
+  .strength h3 { color: #50C878; }
+  .strength .score { color: #50C878; }
+  .weakness h3 { color: #FF8C42; }
+  .weakness .score { color: #FF8C42; }
+
+  /* Slide 7: Demo */
+  .demo-timeline { margin-top: 32px; position: relative; }
+  .demo-timeline::before { content: ""; position: absolute; left: 24px; top: 0; bottom: 0; width: 2px; background: #2a2a4a; }
+  .demo-step { display: flex; align-items: flex-start; margin: 16px 0; position: relative; }
+  .demo-dot { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; color: #fff; flex-shrink: 0; z-index: 1; }
+  .demo-dot.active { background: #4A90D9; }
+  .demo-dot.highlight { background: #50C878; }
+  .demo-dot.accent { background: #FF8C42; }
+  .demo-body { margin-left: 16px; background: #111128; border-radius: 10px; padding: 16px 20px; flex: 1; }
+  .demo-body h4 { color: #fff; font-size: 15px; margin-bottom: 4px; }
+  .demo-body .time { color: #4A90D9; font-size: 12px; font-weight: bold; margin-bottom: 6px; }
+  .demo-body p { color: #888; font-size: 13px; line-height: 1.5; }
+  .demo-body .script { color: #ccc; font-size: 13px; background: rgba(74, 144, 217, 0.08); padding: 8px 12px; border-radius: 6px; margin-top: 8px; border-left: 3px solid #4A90D9; font-style: italic; }
+
+  /* Slide 8: Closing */
+  .closing { text-align: center; }
+  .closing h2 { font-size: 40px; margin-bottom: 24px; }
+  .closing-stats { display: flex; gap: 40px; justify-content: center; margin: 32px 0; }
+  .closing-stat .num { font-size: 48px; font-weight: bold; color: #4A90D9; }
+  .closing-stat .label { font-size: 13px; color: #666; }
+
+  .footer { text-align: center; color: #333; font-size: 11px; padding: 20px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: Cover -->
+<!-- ============================================================ -->
+<div class="slide cover">
+  <div class="slide-number">01</div>
+  <h1><span>INSURE</span> Dashboard</h1>
+  <p class="tagline">서울시 25개 자치구 동산보험 분석 플랫폼</p>
+  <div class="tags">
+    <span class="tag">Snowflake Native</span>
+    <span class="tag">7-Stage Premium Engine</span>
+    <span class="tag">Cortex ML / LLM</span>
+    <span class="tag">RAG + Graph RAG</span>
+    <span class="tag">10 Persona Segments</span>
+    <span class="tag">Real-time Risk Scoring</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2: Problem -->
+<!-- ============================================================ -->
+<div class="slide">
+  <div class="slide-number">02</div>
+  <h2>Problem: <span>동산보험의 3가지 구조적 한계</span></h2>
+  <p class="section-sub">기존 동산보험은 왜 시장 확대에 실패하는가?</p>
+  <div class="problem-grid">
+    <div class="problem-card">
+      <div class="icon">1</div>
+      <h3>획일적 보험료 산정</h3>
+      <p>자치구별 화재율 최대 3.2배 차이에도 동일 보험료 적용. 저위험 지역 고객은 과다 납부, 고위험 지역은 과소 산정으로 손실률 악화.</p>
+    </div>
+    <div class="problem-card">
+      <div class="icon">2</div>
+      <h3>고객 세분화 부재</h3>
+      <p>1인가구 청년과 4인가구 자영업자에게 같은 상품 제안. 라이프사이클, 자산규모, 소득 수준 미반영으로 전환율 저조.</p>
+    </div>
+    <div class="problem-card">
+      <div class="icon">3</div>
+      <h3>약관 해석의 불투명성</h3>
+      <p>14개 조항, 4개 규칙의 복잡한 상호 참조 구조. 상담사도 즉답 어려워 고객 이탈 발생. 규정 근거 없는 답변은 컴플라이언스 리스크.</p>
+    </div>
+    <div class="problem-card">
+      <div class="icon">4</div>
+      <h3>시장 기회 포착 불가</h3>
+      <p>이사 시즌(3-4월, 9-10월) 동산보험 수요 급증을 실시간 감지 못함. 부동산 거래량 기반 교차판매 타이밍 놓침.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 3: Solution -->
+<!-- ============================================================ -->
+<div class="slide">
+  <div class="slide-number">03</div>
+  <h2>Solution: <span>INSURE Platform</span></h2>
+  <p class="section-sub">데이터 기반 보험료 산정 + AI 상담 + 시장 인텔리전스</p>
+  <div class="solution-flow">
+    <div class="flow-step">
+      <div class="step-num">STEP 1</div>
+      <h4>공공데이터 수집</h4>
+      <p>화재/범죄/기상/건물/부동산 9개 소스 자동 적재</p>
+    </div>
+    <div class="flow-gap"></div>
+    <div class="flow-step">
+      <div class="step-num">STEP 2</div>
+      <h4>위험도 스코어링</h4>
+      <p>25개 자치구 x 4개 리스크 요소 통합 점수 산출</p>
+    </div>
+    <div class="flow-gap"></div>
+    <div class="flow-step">
+      <div class="step-num">STEP 3</div>
+      <h4>보험료 엔진</h4>
+      <p>7단계 비선형 커브 + 신뢰도 + 부담능력 보정</p>
+    </div>
+    <div class="flow-gap"></div>
+    <div class="flow-step">
+      <div class="step-num">STEP 4</div>
+      <h4>AI 상담</h4>
+      <p>RAG 기반 약관 Q&A + Graph RAG 연결 추론</p>
+    </div>
+    <div class="flow-gap"></div>
+    <div class="flow-step">
+      <div class="step-num">STEP 5</div>
+      <h4>대시보드</h4>
+      <p>시뮬레이터 + 시각화 + 실시간 모니터링</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 4: Tech Architecture -->
+<!-- ============================================================ -->
+<div class="slide">
+  <div class="slide-number">04</div>
+  <h2>Architecture: <span>6-Layer Snowflake Pipeline</span></h2>
+  <p class="section-sub">dbt 패턴 기반 데이터 파이프라인 + ML/LLM/RAG 통합</p>
+  <div class="tech-layers">
+    <div class="tech-layer l1">
+      <div class="tech-label">RAW (9 tables)</div>
+      <div class="tech-content">FIRE_STATS, CRIME_STATS, BUILDING_AGE, WEATHER_RISK, REAL_ESTATE_TX, CONSUMER_ACCIDENT, HOUSEHOLD_GOODS, PERSONA_SEGMENTS, ASSET_INCOME</div>
+    </div>
+    <div class="tech-layer l2">
+      <div class="tech-label">STAGING (13 views)</div>
+      <div class="tech-content">비정규화 + 타입 캐스팅 + 별칭 정리. STG_FIRE_STATS, STG_ASSET_INCOME 등</div>
+    </div>
+    <div class="tech-layer l3">
+      <div class="tech-label">INTERMEDIATE</div>
+      <div class="tech-content">INT_DISTRICT_RISK_SCORE (4요소 통합), INT_SEGMENT_CLASSIFICATION, INT_ANOMALY_DETECTION</div>
+    </div>
+    <div class="tech-layer l4">
+      <div class="tech-label">MART</div>
+      <div class="tech-content">MART_DISTRICT_INSURANCE_SUMMARY, MART_PREMIUM_LAYER, MART_GENDER_AGE_CORRELATION</div>
+    </div>
+    <div class="tech-layer l5">
+      <div class="tech-label">RAG + GRAPH</div>
+      <div class="tech-content">367 policy chunks (e5-base-v2 embedding) + 31 graph nodes + 34 edges (6 relationship types)</div>
+    </div>
+    <div class="tech-layer l6">
+      <div class="tech-label">ML / LLM</div>
+      <div class="tech-content">Cortex FORECAST (fire prediction) + ANOMALY_DETECTION (moving season) + Mistral-Large2 (advisor) + SENTIMENT</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 5: Differentiators -->
+<!-- ============================================================ -->
+<div class="slide">
+  <div class="slide-number">05</div>
+  <h2>Why <span>INSURE</span>?</h2>
+  <p class="section-sub">기존 보험 분석 시스템 대비 차별점</p>
+  <div class="diff-grid">
+    <div class="diff-card">
+      <div class="metric">7 Stage</div>
+      <h3>보험료 산출 투명성</h3>
+      <p>순보험료 -> 경험보험료 -> 위험분류 -> 부가보험료 -> 신뢰도보정 -> 세그먼트조정 -> 최종보험료. 모든 단계가 고객에게 공개 가능.</p>
+    </div>
+    <div class="diff-card">
+      <div class="metric">10 Persona</div>
+      <h3>초세분화 고객 프로파일</h3>
+      <p>라이프사이클(6) x 자산소비(5) x 주거(4) x 직업(3) x 위험성향(3) = 10개 대표 페르소나로 맞춤 상품 설계.</p>
+    </div>
+    <div class="diff-card">
+      <div class="metric">Graph RAG</div>
+      <h3>약관 연결 추론</h3>
+      <p>단순 키워드 검색이 아닌 "약관 -> 데이터 -> 규칙 -> 모델" 관계 그래프 기반 3-hop 추론으로 근거 있는 답변.</p>
+    </div>
+    <div class="diff-card">
+      <div class="metric">25</div>
+      <h3>자치구별 리스크 맵</h3>
+      <p>서울시 25개 자치구 화재/범죄/기상/건물 4차원 위험도를 실시간 반영. 지역별 손실률 예측 및 포트폴리오 최적화.</p>
+    </div>
+    <div class="diff-card">
+      <div class="metric">Z-Score</div>
+      <h3>이사 시즌 자동 감지</h3>
+      <p>부동산 거래량 이상치 탐지로 동산보험 수요 급증 시점 사전 포착. 교차판매 최적 타이밍 알림.</p>
+    </div>
+    <div class="diff-card">
+      <div class="metric">0.5%</div>
+      <h3>부담능력 보호 장치</h3>
+      <p>월소득 대비 보험료 상한(0.5%) 자동 적용. 과도한 보험료로 인한 고객 이탈 방지 + 금융소비자 보호 규정 준수.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 6: Value Assessment (Honest) -->
+<!-- ============================================================ -->
+<div class="slide">
+  <div class="slide-number">06</div>
+  <h2>Honest <span>Value Assessment</span></h2>
+  <p class="section-sub">상품 도입을 검토하는 사람 관점의 솔직한 평가</p>
+  <div class="value-grid">
+    <div class="value-card strength">
+      <h3>Strengths</h3>
+      <div class="score">A</div>
+      <div class="score-label">기술 완성도 & 아키텍처</div>
+      <ul>
+        <li>Snowflake 네이티브 풀스택 - 별도 인프라 불필요</li>
+        <li>dbt 패턴 파이프라인이 실무 표준에 부합</li>
+        <li>7단계 보험료 엔진이 실제 보험수리 로직 반영</li>
+        <li>RAG + Graph RAG 이중 구조는 업계에서 드문 구현</li>
+        <li>10개 페르소나 세분화는 마케팅 즉시 활용 가능</li>
+        <li>Cortex ML 예측 + 이상치 탐지 = 선제적 영업 가능</li>
+      </ul>
+    </div>
+    <div class="value-card weakness">
+      <h3>Gaps to Address</h3>
+      <div class="score">B</div>
+      <div class="score-label">프로덕션 준비도</div>
+      <ul>
+        <li class="minus">실 보험 데이터 아닌 시뮬레이션 데이터 기반</li>
+        <li class="minus">인증/권한 체계 미구현 (credentials hardcoded)</li>
+        <li class="minus">모니터링/알림 파이프라인 없음</li>
+        <li class="minus">부하 테스트/성능 벤치마크 미실시</li>
+        <li class="minus">일부 UI 페이지 미완성 (Page 4 빈 탭)</li>
+        <li class="minus">Graph RAG가 아직 Streamlit에 미통합</li>
+      </ul>
+    </div>
+    <div class="value-card strength" style="grid-column: 1 / -1;">
+      <h3>Overall Verdict</h3>
+      <p style="font-size: 16px; color: #ccc; line-height: 1.8; margin-top: 12px;">
+        <b style="color: #50C878;">MVP로서 매우 우수.</b>
+        보험 도메인 이해도가 높고, 단순 대시보드가 아닌 "보험료 산출 엔진 + AI 상담 + 시장 인텔리전스"를 하나의 플랫폼에 통합한 점이 핵심 가치.
+        특히 7단계 보험료 투명성과 Graph RAG 약관 추론은 실제 InsurTech에서도 차별화 요소로 충분.
+        <br><br>
+        <b style="color: #FF8C42;">프로덕션 전환 시</b> 실데이터 적재, 인증 체계, CI/CD 파이프라인, 부하 테스트가 필요하지만,
+        이는 MVP 단계에서 기대하기 어려운 영역이며 아키텍처가 이를 수용할 수 있도록 설계되어 있음.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7: Demo Script -->
+<!-- ============================================================ -->
+<div class="slide">
+  <div class="slide-number">07</div>
+  <h2>Demo <span>Script</span></h2>
+  <p class="section-sub">5분 데모 시나리오 (심사위원용)</p>
+  <div class="demo-timeline">
+
+    <div class="demo-step">
+      <div class="demo-dot active">1</div>
+      <div class="demo-body">
+        <div class="time">0:00 - 0:45 (45s)</div>
+        <h4>Page 1: 서울시 보험료 지도</h4>
+        <p>전체 현황 Overview. KPI 3개 강조 후 버블차트로 "위험도와 보험료의 상관관계" 설명.</p>
+        <div class="script">"서울시 25개 자치구의 위험도와 보험료를 한눈에 봅니다. 강북구는 화재율이 서초구 대비 3.2배 높지만, 기존 보험은 같은 보험료를 받고 있었습니다."</div>
+      </div>
+    </div>
+
+    <div class="demo-step">
+      <div class="demo-dot highlight">2</div>
+      <div class="demo-body">
+        <div class="time">0:45 - 2:15 (90s) - CORE DEMO</div>
+        <h4>Page 2: 맞춤 보험 시뮬레이터</h4>
+        <p>프리셋 "김사원(사회초년생)" 선택 -> 품목 3개 선택 -> 7단계 보험료 계산 과정 시연. Gauge + Donut + Waterfall 차트 강조.</p>
+        <div class="script">"25세 사회초년생 김사원 씨의 보험료를 산출해보겠습니다. 노트북, 가전, 의류를 선택하면... 7단계를 거쳐 월 8,400원이 산출됩니다. 각 단계가 투명하게 공개되어 고객이 '왜 이 금액인지' 이해할 수 있습니다."</div>
+      </div>
+    </div>
+
+    <div class="demo-step">
+      <div class="demo-dot active">3</div>
+      <div class="demo-body">
+        <div class="time">2:15 - 3:15 (60s)</div>
+        <h4>Page 3: AI 보험 상담</h4>
+        <p>"보험료가 왜 이렇게 나왔나요?" 또는 "화재 시 보장 범위는?" 질문. RAG 기반 약관 근거 답변 시연.</p>
+        <div class="script">"고객이 보험료에 의문이 있으면 AI 상담사에게 질문합니다. 약관 367개 청크에서 관련 조항을 찾아 근거 있는 답변을 제공합니다. 허위 답변(hallucination) 방지를 위해 반드시 약관 원문을 참조합니다."</div>
+      </div>
+    </div>
+
+    <div class="demo-step">
+      <div class="demo-dot accent">4</div>
+      <div class="demo-body">
+        <div class="time">3:15 - 4:15 (60s)</div>
+        <h4>Page 4: 엔진 상세 + Graph RAG</h4>
+        <p>자치구 하나 선택해서 Risk Radar 차트 보여주고, Graph RAG 구조도(graph_rag_map.png) 보여주기.</p>
+        <div class="script">"내부적으로는 이런 그래프 구조로 약관-데이터-규칙-모델이 연결되어 있습니다. 14개 약관 조항이 11개 데이터 소스와 어떻게 연결되는지 3-hop까지 추론합니다."</div>
+      </div>
+    </div>
+
+    <div class="demo-step">
+      <div class="demo-dot active">5</div>
+      <div class="demo-body">
+        <div class="time">4:15 - 5:00 (45s)</div>
+        <h4>Page 5: 시스템 현황 + Closing</h4>
+        <p>파이프라인 상태 + 기술 스택 요약. "질문 받겠습니다"로 마무리.</p>
+        <div class="script">"전체 시스템은 Snowflake 위에서 동작하며, 별도 서버 없이 Streamlit in Snowflake로 배포됩니다. 데이터 적재부터 ML 예측, AI 상담까지 하나의 플랫폼에서 운영됩니다."</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 8: Closing -->
+<!-- ============================================================ -->
+<div class="slide closing">
+  <div class="slide-number">08</div>
+  <h2>INSURE <span>by the Numbers</span></h2>
+  <div class="closing-stats">
+    <div class="closing-stat">
+      <div class="num">25</div>
+      <div class="label">Seoul Districts</div>
+    </div>
+    <div class="closing-stat">
+      <div class="num">7</div>
+      <div class="label">Premium Stages</div>
+    </div>
+    <div class="closing-stat">
+      <div class="num">10</div>
+      <div class="label">Customer Personas</div>
+    </div>
+    <div class="closing-stat">
+      <div class="num">367</div>
+      <div class="label">RAG Chunks</div>
+    </div>
+    <div class="closing-stat">
+      <div class="num">31</div>
+      <div class="label">Graph Nodes</div>
+    </div>
+    <div class="closing-stat">
+      <div class="num">6</div>
+      <div class="label">Schema Layers</div>
+    </div>
+  </div>
+  <p style="color: #666; font-size: 16px; margin-top: 24px;">
+    Data-driven insurance pricing for everyone.
+  </p>
+</div>
+
+<div class="footer">
+  INSURE Dashboard | feature_kijun | 2026-04-11 | Pitch Deck & Demo Plan
+</div>
+
+</body>
+</html>
