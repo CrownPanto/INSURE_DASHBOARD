@@ -62,15 +62,15 @@ def show_page(session, selected_ym):
         <div style="padding:4px 0 0;">
             <div style="color:{INDIGO}; font-size:11px; font-weight:700; text-transform:uppercase;
                         letter-spacing:.12em; margin-bottom:4px;">Engine Detail</div>
-            <div style="color:{TXT1}; font-size:22px; font-weight:800; letter-spacing:-.02em;">⚙️ 엔진 상세</div>
-            <div style="color:{TXT2}; font-size:12px; margin-top:3px;">
+            <div style="color:#0f172a; font-size:22px; font-weight:800; letter-spacing:-.02em;">⚙️ 엔진 상세</div>
+            <div style="color:#475569; font-size:12px; margin-top:3px;">
                 구별 리스크 분석 · 7단계 보험료 산출 · 미래 예측 모델
             </div>
         </div>
         """, unsafe_allow_html=True)
     with s_col:
         st.markdown(f"<div style='height:8px'></div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='color:{TXT2}; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px;'>자치구 선택</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='color:#334155; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px;'>자치구 선택</div>", unsafe_allow_html=True)
         sel_gu = st.selectbox("자치구", DEMO_DISTRICTS, index=DEMO_DISTRICTS.index("서초구"),
                               label_visibility="collapsed")
 
@@ -120,15 +120,15 @@ def show_page(session, selected_ym):
     t_r, t_p, t_f = st.tabs(["🎯  위험 분석", "💰  보험료 산출", "📈  미래 예측"])
 
     def section(icon, title, desc=""):
-        desc_html = f'<div style="color:{TXT2}; font-size:11px; margin-top:3px;">{desc}</div>' if desc else ""
+        desc_html = f'<div style="color:#475569; font-size:11px; margin-top:3px;">{desc}</div>' if desc else ""
         st.markdown(f"""
         <div style="display:flex; align-items:center; gap:12px;
-                    border-bottom:2px solid {BORDER}; padding-bottom:14px; margin:20px 0 18px;">
-            <div style="background:{INDIGO}22; border:1px solid {INDIGO}55; border-radius:10px;
+                    border-bottom:2px solid #e2e8f0; padding-bottom:14px; margin:20px 0 18px;">
+            <div style="background:#ede9fe; border:1px solid #c4b5fd; border-radius:10px;
                         width:40px; height:40px; display:flex; align-items:center;
                         justify-content:center; font-size:18px; flex-shrink:0;">{icon}</div>
             <div>
-                <div style="color:{TXT1}; font-size:15px; font-weight:700;">{title}</div>
+                <div style="color:#0f172a; font-size:15px; font-weight:700;">{title}</div>
                 {desc_html}
             </div>
         </div>
@@ -139,6 +139,28 @@ def show_page(session, selected_ym):
     # ────────────────────────────────────────────────────────────
     with t_r:
         section("📡", "리스크 레이더", f"{sel_gu} vs 서울 평균 — 4개 위험 요인 비교")
+
+        # ── 통계 사전 계산 ──────────────────────────────────────────
+        all_vals = {
+            "fire":     [v["fire"]     for v in DISTRICT_PROFILES.values()],
+            "theft":    [v["theft"]    for v in DISTRICT_PROFILES.values()],
+            "building": [v["building"] for v in DISTRICT_PROFILES.values()],
+            "weather":  [v["weather"]  for v in DISTRICT_PROFILES.values()],
+            "risk":     [v["risk"]     for v in DISTRICT_PROFILES.values()],
+        }
+        def percentile_rank(val, arr):
+            return int(sum(v <= val for v in arr) / len(arr) * 100)
+        def z_score(val, arr):
+            mu, sd = np.mean(arr), np.std(arr)
+            return (val - mu) / sd if sd > 0 else 0
+
+        factors = [
+            ("fire",     "🔥", "화재",    p["fire"],     avg_fire,     RED),
+            ("theft",    "🔓", "도난",    p["theft"],    avg_theft,    ORANGE),
+            ("building", "🏢", "건물노후", p["building"], avg_building, YELLOW),
+            ("weather",  "🌧", "기상",    p["weather"],  avg_weather,  INDIGO),
+        ]
+
         col_radar, col_stats = st.columns([3, 2])
 
         with col_radar:
@@ -158,58 +180,110 @@ def show_page(session, selected_ym):
                 fill='toself', name=sel_gu,
                 line=dict(color=grade_color, width=2.5),
                 fillcolor=grade_bg,
-                marker=dict(size=7, color=grade_color),
+                marker=dict(size=8, color=grade_color),
             ))
             fig_radar.update_layout(
                 polar=dict(
-                    radialaxis=dict(visible=True, range=[0,60],
+                    radialaxis=dict(visible=True, range=[0, 65],
+                                   tickvals=[15, 30, 45, 60],
                                    tickfont=dict(color=TXT3, size=9),
                                    gridcolor=BORDER, linecolor=BORDER),
-                    angularaxis=dict(tickfont=dict(color=TXT1, size=13),
+                    angularaxis=dict(tickfont=dict(color=TXT1, size=14, family="sans-serif"),
                                      gridcolor=BORDER, linecolor=BORDER),
                     bgcolor="rgba(0,0,0,0)",
+                    hole=0.08,
                 ),
-                height=360,
+                height=400,
                 plot_bgcolor=BG, paper_bgcolor=BG,
                 font=dict(color=TXT1),
-                legend=dict(orientation="h", y=-0.08, font=dict(color=TXT2, size=11),
-                            bgcolor="rgba(0,0,0,0)"),
-                margin=dict(l=40, r=40, t=20, b=40),
+                legend=dict(orientation="h", y=-0.05, x=0.5, xanchor="center",
+                            font=dict(color=TXT2, size=12), bgcolor="rgba(0,0,0,0)"),
+                margin=dict(l=80, r=80, t=80, b=80),
             )
             st.plotly_chart(fig_radar, use_container_width=True)
 
         with col_stats:
             st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-            metrics = [
-                ("🔥", "화재",    p["fire"],     avg_fire,     RED),
-                ("🔓", "도난",    p["theft"],    avg_theft,    ORANGE),
-                ("🏢", "건물노후", p["building"], avg_building, YELLOW),
-                ("🌧", "기상",    p["weather"],  avg_weather,  INDIGO),
-            ]
-            for icon, label, val, avg, color in metrics:
+            for key, icon, label, val, avg, color in factors:
                 diff     = val - avg
                 diff_str = f"+{diff:.1f}" if diff > 0 else f"{diff:.1f}"
                 diff_col = RED if diff > 3 else GREEN if diff < -3 else TXT2
                 bar_pct  = int(val / 60 * 100)
                 avg_pct  = int(avg / 60 * 100)
+                z        = z_score(val, all_vals[key])
+                pct      = percentile_rank(val, all_vals[key])
                 st.markdown(f"""
                 <div style="background:{CARD}; border:1px solid {BORDER}; border-left:3px solid {color};
                             border-radius:12px; padding:12px 16px; margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
                         <span style="color:{TXT1}; font-size:13px; font-weight:700;">{icon} {label}</span>
-                        <span style="display:flex; gap:10px; align-items:baseline;">
+                        <span style="display:flex; gap:8px; align-items:baseline;">
                             <span style="color:{color}; font-size:18px; font-weight:800;">{val:.1f}</span>
-                            <span style="color:{diff_col}; font-size:11px; font-weight:600;">평균 대비 {diff_str}</span>
+                            <span style="color:{diff_col}; font-size:11px; font-weight:600;">{diff_str}</span>
                         </span>
                     </div>
-                    <div style="position:relative; background:{BG}; border-radius:6px; height:8px;">
+                    <div style="position:relative; background:{BG}; border-radius:6px; height:8px; margin-bottom:6px;">
                         <div style="background:{color}; width:{bar_pct}%; height:8px; border-radius:6px;"></div>
                         <div style="position:absolute; top:-2px; left:{avg_pct}%; width:2px; height:12px;
-                                    background:{TXT2}; border-radius:1px;"></div>
+                                    background:{TXT2}; border-radius:1px;" title="서울 평균"></div>
                     </div>
-                    <div style="color:{TXT3}; font-size:10px; margin-top:4px; text-align:right;">서울평균 {avg:.1f}</div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="color:{TXT3}; font-size:10px;">Z = <b style="color:{TXT2};">{z:+.2f}</b></span>
+                        <span style="color:{TXT3}; font-size:10px;">상위 <b style="color:{color};">{100-pct}%</b></span>
+                        <span style="color:{TXT3}; font-size:10px;">평균 {avg:.1f}</span>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
+
+        # ── 통계 검증 패널 ──────────────────────────────────────────
+        st.markdown(f"<div style='color:#0f172a; font-size:14px; font-weight:700; margin:20px 0 10px;'>📊 통계 검증</div>", unsafe_allow_html=True)
+
+        risk_scores  = all_vals["risk"]
+        risk_z       = z_score(risk, risk_scores)
+        risk_pct     = percentile_rank(risk, risk_scores)
+        risk_rank    = sorted(DISTRICT_PROFILES.keys(), key=lambda g: DISTRICT_PROFILES[g]["risk"], reverse=True).index(sel_gu) + 1
+        dominant_key = max(["fire","theft","building","weather"],
+                           key=lambda k: z_score(DISTRICT_PROFILES[sel_gu][k.replace("building","building").replace("weather","weather")], all_vals[k]))
+        dominant_label = {"fire":"화재","theft":"도난","building":"건물노후","weather":"기상"}[dominant_key]
+        risk_sd      = np.std(risk_scores)
+        risk_mean    = np.mean(risk_scores)
+
+        s1, s2, s3, s4 = st.columns(4)
+        stat_style = f"background:{CARD}; border:1px solid {BORDER}; border-radius:12px; padding:14px 16px;"
+
+        with s1:
+            st.markdown(f"""
+            <div style="{stat_style} border-top:3px solid {grade_color};">
+                <div style="color:#475569; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;">위험도 순위</div>
+                <div style="color:{TXT1}; font-size:22px; font-weight:900;">{risk_rank}<span style="color:{TXT3}; font-size:13px;"> / 25</span></div>
+                <div style="color:{TXT3}; font-size:10px; margin-top:4px;">서울 25개 구 중</div>
+            </div>""", unsafe_allow_html=True)
+
+        with s2:
+            z_col = RED if risk_z > 1 else ORANGE if risk_z > 0 else GREEN
+            st.markdown(f"""
+            <div style="{stat_style} border-top:3px solid {z_col};">
+                <div style="color:#475569; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;">Z-Score</div>
+                <div style="color:{z_col}; font-size:22px; font-weight:900;">{risk_z:+.2f}</div>
+                <div style="color:{TXT3}; font-size:10px; margin-top:4px;">σ={risk_sd:.1f}, μ={risk_mean:.1f}</div>
+            </div>""", unsafe_allow_html=True)
+
+        with s3:
+            st.markdown(f"""
+            <div style="{stat_style} border-top:3px solid {INDIGO};">
+                <div style="color:#475569; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;">백분위</div>
+                <div style="color:{TXT1}; font-size:22px; font-weight:900;">상위 {100-risk_pct}<span style="color:{TXT3}; font-size:13px;">%</span></div>
+                <div style="color:{TXT3}; font-size:10px; margin-top:4px;">전체 구 대비 위험도 위치</div>
+            </div>""", unsafe_allow_html=True)
+
+        with s4:
+            dom_col = {"fire":RED,"theft":ORANGE,"building":YELLOW,"weather":INDIGO}[dominant_key]
+            st.markdown(f"""
+            <div style="{stat_style} border-top:3px solid {dom_col};">
+                <div style="color:#475569; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;">주요 위험 요인</div>
+                <div style="color:{dom_col}; font-size:18px; font-weight:900;">{dominant_label}</div>
+                <div style="color:{TXT3}; font-size:10px; margin-top:4px;">Z-score 기준 평균 대비 최고 편차</div>
+            </div>""", unsafe_allow_html=True)
 
     # ────────────────────────────────────────────────────────────
     # TAB 2: 보험료 산출
