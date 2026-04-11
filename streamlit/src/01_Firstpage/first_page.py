@@ -431,45 +431,103 @@ def show_page(session, selected_ym):
     if len(df_over) > 0:
         names = ", ".join(df_over["GU_NAME"].tolist())
         vals  = ", ".join([f"₩{v:,.0f}" for v in df_over["ADJUSTED_PREMIUM_MONTHLY"]])
-        st.info(f"⚠️ **이상치 제외** — {names} ({vals}) 는 차트에서 제외됩니다 (별도 구간)")
+        st.info(f"⚠️ **이상치 제외** — {names} ({vals}) 는 차트에서 제외됩니다")
 
-    # 색상: 위험도 기반
-    norm = df_bar["COMPOSITE_RISK_SCORE"]
-    r_min, r_max = norm.min(), norm.max()
-    def risk_to_color(v):
-        t = (v - r_min) / (r_max - r_min) if r_max > r_min else 0.5
-        if t < 0.33: return "#10b981"
-        if t < 0.66: return "#f59e0b"
-        return "#ef4444"
-    colors = [risk_to_color(v) for v in df_bar["COMPOSITE_RISK_SCORE"]]
+    # 위험도 분포 기반 3구간 (실제 데이터 분위수)
+    df_bar = df_bar.copy()
+    rs = df_bar["COMPOSITE_RISK_SCORE"]
+    low_thr  = rs.quantile(0.33)
+    high_thr = rs.quantile(0.67)
+
+    def bar_color(v):
+        if v >= high_thr: return "#ef4444"
+        if v >= low_thr:  return "#f59e0b"
+        return "#22c55e"
+
+    def risk_tier(v):
+        if v >= high_thr: return f"🔴 고위험 {v:.1f}점"
+        if v >= low_thr:  return f"🟡 중위험 {v:.1f}점"
+        return f"🟢 저위험 {v:.1f}점"
+
+    df_bar["_color"]     = df_bar["COMPOSITE_RISK_SCORE"].apply(bar_color)
+    df_bar["_risk_tier"] = df_bar["COMPOSITE_RISK_SCORE"].apply(risk_tier)
+    df_bar["_diff_pct"]  = ((df_bar["ADJUSTED_PREMIUM_MONTHLY"] - avg_premium) / avg_premium * 100).round(1)
+
+    # X축 최솟값 기준으로 시작해서 차이가 크게 보이도록
+    x_min_bar = df_bar["ADJUSTED_PREMIUM_MONTHLY"].min()
+    x_max_bar = df_bar["ADJUSTED_PREMIUM_MONTHLY"].max()
+    x_range   = x_max_bar - x_min_bar
+    x_start   = max(0, min(x_min_bar, avg_premium) - x_range * 0.05)
+    x_end     = max(x_max_bar, avg_premium) + x_range * 0.22
 
     fig_bar = go.Figure()
     fig_bar.add_trace(go.Bar(
         y=df_bar["GU_NAME"],
         x=df_bar["ADJUSTED_PREMIUM_MONTHLY"],
         orientation="h",
-        marker=dict(color=colors, line=dict(width=0)),
+        marker=dict(color=df_bar["_color"], line=dict(width=0), opacity=0.88),
+        customdata=df_bar[["_risk_tier", "_diff_pct"]].values,
         text=[f"₩{v:,.0f}" for v in df_bar["ADJUSTED_PREMIUM_MONTHLY"]],
         textposition="outside",
-        textfont=dict(size=10, color="#e2e8f0"),
-        hovertemplate="<b>%{y}</b><br>월보험료: ₩%{x:,.0f}<br><extra></extra>",
+        textfont=dict(size=10, color="#1e293b"),
+        hovertemplate=(
+            "<b>%{y}</b><br>"
+            "💰 월보험료: <b>₩%{x:,.0f}</b><br>"
+            "⚠️ 위험도: <b>%{customdata[0]}</b><br>"
+            "📊 평균 대비: <b>%{customdata[1]:+.1f}%</b>"
+            "<extra></extra>"
+        ),
     ))
-    fig_bar.add_vline(x=avg_premium, line_dash="dot", line_color="#6366f1", line_width=2,
-                      annotation_text=f"평균 ₩{avg_premium:,.0f}",
-                      annotation_font=dict(color="#a5b4fc", size=10),
-                      annotation_position="top")
+
+    fig_bar.add_vline(
+        x=avg_premium, line_dash="dash", line_color="#4f46e5", line_width=2,
+    )
+    fig_bar.add_annotation(
+        x=avg_premium, y=1, yref="paper",
+        text=f"▼ 서울 평균<br>₩{avg_premium:,.0f}",
+        showarrow=False,
+        font=dict(color="#4f46e5", size=11, family="Arial"),
+        bgcolor="rgba(255,255,255,0.9)",
+        bordercolor="#4f46e5",
+        borderwidth=1, borderpad=6,
+        xanchor="center", yanchor="bottom",
+    )
 
     fig_bar.update_layout(
-        height=max(400, len(df_bar) * 28),
-        plot_bgcolor="#0f1117", paper_bgcolor="#0f1117",
-        font=dict(color="#f1f5f9", size=10),
-        xaxis=dict(title="월 보험료 (원)", title_font=dict(color="#94a3b8"),
-                   tickformat=",", gridcolor="rgba(255,255,255,0.05)"),
-        yaxis=dict(title="", tickfont=dict(size=11)),
+        height=max(500, len(df_bar) * 30),
+        plot_bgcolor="#f8fafc", paper_bgcolor="#f8fafc",
+        font=dict(color="#1e293b", size=11),
+        xaxis=dict(
+            title="월 보험료 (원)",
+            title_font=dict(color="#475569", size=12),
+            tickformat=",",
+            tickfont=dict(color="#64748b"),
+            gridcolor="rgba(0,0,0,0.06)",
+            range=[x_start, x_end],
+            zeroline=False,
+        ),
+        yaxis=dict(
+            tickfont=dict(size=11, color="#1e293b"),
+            autorange="reversed",
+        ),
         showlegend=False,
-        margin=dict(t=20, l=80, r=100, b=40),
+        margin=dict(t=60, l=90, r=110, b=50),
     )
     st.plotly_chart(fig_bar, use_container_width=True)
+
+    # 색상 범례
+    leg1, leg2, leg3, _ = st.columns([1, 1, 1, 2])
+    for col, color, label in [
+        (leg1, "#ef4444", f"🔴 고위험  ≥ {high_thr:.0f}점"),
+        (leg2, "#f59e0b", f"🟡 중위험  {low_thr:.0f}~{high_thr:.0f}점"),
+        (leg3, "#22c55e", f"🟢 저위험  < {low_thr:.0f}점"),
+    ]:
+        col.markdown(
+            f'<div style="border-left:3px solid {color}; padding:5px 10px; '
+            f'background:rgba(0,0,0,0.03); border-radius:0 6px 6px 0;">'
+            f'<span style="font-size:11px; color:#334155;">{label}</span></div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown("---")
 
