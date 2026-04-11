@@ -627,24 +627,13 @@ def show_page(session, selected_ym):
 
     # ─── 6-2. 구별 위험도 & 보험료 비교 (horizontal bar) ───
     st.subheader("구별 위험도 & 보험료 한눈에 비교")
-    st.caption("보험료 순 정렬 | 파란선 = 서울 평균 | 색상 = 위험도")
+    st.caption("보험료 순 정렬 | 파란 점선 = 서울 평균 | 주황 점선 = 중앙값 | 색상 = 위험도")
 
-    # outlier 제외한 24개 구 표시, 서초구 별도 안내
-    Q3_bar = agg_df["ADJUSTED_PREMIUM_MONTHLY"].quantile(0.75)
-    IQR_bar = Q3_bar - agg_df["ADJUSTED_PREMIUM_MONTHLY"].quantile(0.25)
-    cutoff = Q3_bar + 1.5 * IQR_bar
-
-    df_bar   = agg_df[agg_df["ADJUSTED_PREMIUM_MONTHLY"] <= cutoff].sort_values("ADJUSTED_PREMIUM_MONTHLY", ascending=True)
-    df_over  = agg_df[agg_df["ADJUSTED_PREMIUM_MONTHLY"] >  cutoff]
-
-    # 이상치 안내 박스
-    if len(df_over) > 0:
-        names = ", ".join(df_over["GU_NAME"].tolist())
-        vals  = ", ".join([f"₩{v:,.0f}" for v in df_over["ADJUSTED_PREMIUM_MONTHLY"]])
-        st.info(f"⚠️ **이상치 제외** — {names} ({vals}) 는 차트에서 제외됩니다")
+    # 전체 25개 구 모두 표시 (이상치 제외 없음)
+    df_bar = agg_df.sort_values("ADJUSTED_PREMIUM_MONTHLY", ascending=True).copy()
+    median_premium = df_bar["ADJUSTED_PREMIUM_MONTHLY"].median()
 
     # 위험도 분포 기반 3구간 (실제 데이터 분위수)
-    df_bar = df_bar.copy()
     rs = df_bar["COMPOSITE_RISK_SCORE"]
     low_thr  = rs.quantile(0.33)
     high_thr = rs.quantile(0.67)
@@ -667,8 +656,8 @@ def show_page(session, selected_ym):
     x_min_bar = df_bar["ADJUSTED_PREMIUM_MONTHLY"].min()
     x_max_bar = df_bar["ADJUSTED_PREMIUM_MONTHLY"].max()
     x_range   = x_max_bar - x_min_bar
-    x_start   = max(0, min(x_min_bar, avg_premium) - x_range * 0.05)
-    x_end     = max(x_max_bar, avg_premium) + x_range * 0.22
+    x_start   = max(0, min(x_min_bar, avg_premium, median_premium) - x_range * 0.05)
+    x_end     = max(x_max_bar, avg_premium, median_premium) + x_range * 0.26
 
     fig_bar = go.Figure()
     fig_bar.add_trace(go.Bar(
@@ -689,22 +678,37 @@ def show_page(session, selected_ym):
         ),
     ))
 
+    # 평균선 (파랑)
     fig_bar.add_vline(
         x=avg_premium, line_dash="dash", line_color="#4f46e5", line_width=2,
     )
     fig_bar.add_annotation(
         x=avg_premium, y=1, yref="paper",
-        text=f"▼ 서울 평균<br>₩{avg_premium:,.0f}",
+        text=f"▼ 평균<br>₩{avg_premium:,.0f}",
         showarrow=False,
-        font=dict(color="#4f46e5", size=11, family="Arial"),
-        bgcolor="rgba(255,255,255,0.9)",
+        font=dict(color="#4f46e5", size=10, family="Arial"),
+        bgcolor="rgba(255,255,255,0.92)",
         bordercolor="#4f46e5",
-        borderwidth=1, borderpad=6,
+        borderwidth=1, borderpad=5,
+        xanchor="center", yanchor="bottom",
+    )
+    # 중앙값선 (주황)
+    fig_bar.add_vline(
+        x=median_premium, line_dash="dot", line_color="#ea580c", line_width=2,
+    )
+    fig_bar.add_annotation(
+        x=median_premium, y=1, yref="paper",
+        text=f"▼ 중앙값<br>₩{median_premium:,.0f}",
+        showarrow=False,
+        font=dict(color="#ea580c", size=10, family="Arial"),
+        bgcolor="rgba(255,255,255,0.92)",
+        bordercolor="#ea580c",
+        borderwidth=1, borderpad=5,
         xanchor="center", yanchor="bottom",
     )
 
     fig_bar.update_layout(
-        height=max(500, len(df_bar) * 30),
+        height=max(550, len(df_bar) * 28),
         plot_bgcolor="#f8fafc", paper_bgcolor="#f8fafc",
         font=dict(color="#1e293b", size=11),
         xaxis=dict(

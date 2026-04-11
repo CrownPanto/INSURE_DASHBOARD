@@ -135,6 +135,33 @@ PRESETS = [
     },
 ]
 
+# ── 보험수리 상수 (단일 출처) ─────────────────────────────────
+_BASE_FIRE_RATE = 0.001125   # 기본 화재 빈도 (건/년)
+_SEVERITY       = 15_000_000 # 기대 손해액 (원)
+_LOADING_RATE   = 0.51       # 사업비 로딩율
+_FIRE_NORM      = 26.0       # 화재 위험 정규화 기준
+_INCOME_NORM    = 50         # 소득 정규화 기준 (백만원)
+_BURDEN_CAP_PCT = 0.02       # 월소득 대비 보험료 상한 비율
+
+
+def _risk_multiplier(risk_score: float) -> float:
+    """비선형 리스크 커브 v1.3 — 단일 출처"""
+    if   risk_score < 25: return 0.85 + (risk_score / 25.0) ** 0.7 * 0.15
+    elif risk_score < 40: return 1.00 + (risk_score - 25) / 100.0
+    elif risk_score < 60: return 1.15 + ((risk_score - 40) / 20.0) ** 1.5 * 0.35
+    elif risk_score < 80: return 1.50 + ((risk_score - 60) / 20.0) ** 1.8 * 0.50
+    else:                 return min(2.00 + (risk_score - 80) * 0.02, 2.50)
+
+
+def risk_grade_info(risk_score: float) -> dict:
+    """등급·색상·이모지·레이블 — 단일 출처 (second/fourth page 공유)"""
+    if   risk_score < 38: return {"grade":"A","label":"최저위험","color":"#10B981","emoji":"😌","bg":"rgba(16,185,129,.12)"}
+    elif risk_score < 42: return {"grade":"B","label":"낮음",    "color":"#818cf8","emoji":"🙂","bg":"rgba(129,140,248,.12)"}
+    elif risk_score < 47: return {"grade":"C","label":"보통",    "color":"#fbbf24","emoji":"😐","bg":"rgba(251,191,36,.12)"}
+    elif risk_score < 52: return {"grade":"D","label":"높음",    "color":"#fb923c","emoji":"😟","bg":"rgba(251,146,60,.12)"}
+    else:                 return {"grade":"E","label":"최고위험","color":"#f87171","emoji":"😱","bg":"rgba(248,113,113,.12)"}
+
+
 COVERAGE_ITEMS = {
     "가전제품": {"limit": 5000000, "damage_rate": 0.032, "icon": "🏠", "examples": "냉장고, 세탁기, 에어컨, TV"},
     "전자기기": {"limit": 3000000, "damage_rate": 0.045, "icon": "💻", "examples": "노트북, 데스크탑, 카메라, 태블릿"},
@@ -156,7 +183,7 @@ def _demo_district_data():
     rows = []
     for gu in DEMO_DISTRICTS:
         p = DISTRICT_PROFILES.get(gu, {})
-        grade = "A" if p["risk"] < 38 else "B" if p["risk"] < 42 else "C" if p["risk"] < 47 else "D" if p["risk"] < 52 else "E"
+        grade = risk_grade_info(p["risk"])["grade"]
         # IQR 클램핑 적용 (DB의 LEAST/GREATEST와 동일)
         clamped_base = max(min(p["base"], upper_bound), lower_bound)
         # DB 공식: base * (1 + risk/200) * credit_factor (데모는 신용 1.05 가정)
@@ -175,17 +202,12 @@ def calc_premium(district, seg_a_key, seg_b_key, income=50, selected_items=None)
     risk_score = p["risk"]
     seg_a = SEGMENTS_A[seg_a_key]
     seg_b = SEGMENTS_B[seg_b_key]
-    base_fire_rate, severity, loading_rate = 0.001125, 15000000, 0.51
-    fire_freq = base_fire_rate * (p["fire"] / 26.0)
-    pure = fire_freq * severity
-    experience = pure * (income / 50.0)
-    if risk_score < 25: risk_mult = 0.85 + (risk_score / 25.0) ** 0.7 * 0.15
-    elif risk_score < 40: risk_mult = 1.00 + (risk_score - 25) / 100.0
-    elif risk_score < 60: risk_mult = 1.15 + ((risk_score - 40) / 20.0) ** 1.5 * 0.35
-    elif risk_score < 80: risk_mult = 1.50 + ((risk_score - 60) / 20.0) ** 1.8 * 0.50
-    else: risk_mult = min(2.00 + (risk_score - 80) * 0.02, 2.50)
+    fire_freq = _BASE_FIRE_RATE * (p["fire"] / _FIRE_NORM)
+    pure = fire_freq * _SEVERITY
+    experience = pure * (income / _INCOME_NORM)
+    risk_mult = _risk_multiplier(risk_score)
     risk_classified = experience * risk_mult
-    loaded = risk_classified * (1 + loading_rate)
+    loaded = risk_classified * (1 + _LOADING_RATE)
     credible = loaded
     segment_mult = seg_a["mult"] * seg_b["mult"]
     segment_adjusted = credible * segment_mult
@@ -197,7 +219,7 @@ def calc_premium(district, seg_a_key, seg_b_key, income=50, selected_items=None)
                 item_addon += ci["limit"] * ci["damage_rate"] / 12
     total_with_items = segment_adjusted + item_addon
     monthly_income = income * 1_000_000 / 12
-    cap = monthly_income * 0.02
+    cap = monthly_income * _BURDEN_CAP_PCT
     final = min(total_with_items, cap) if cap > 0 else total_with_items
     return {
         "pure": round(pure), "experience": round(experience), "risk_classified": round(risk_classified),

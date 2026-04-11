@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-from utils import DISTRICT_PROFILES, DEMO_DISTRICTS, SEGMENTS_A, SEGMENTS_B, calc_premium
+from utils import DISTRICT_PROFILES, DEMO_DISTRICTS, SEGMENTS_A, SEGMENTS_B, calc_premium, risk_grade_info
 
 # ── 공통 색상 팔레트 ──────────────────────────────────────────
 BG      = "#0f172a"   # 최어두운 배경
@@ -76,14 +76,11 @@ def show_page(session, selected_ym):
 
     p    = DISTRICT_PROFILES[sel_gu]
     risk = p["risk"]
-    grade, grade_color, grade_bg = (
-        ("A", GREEN,   f"rgba(52,211,153,.15)") if risk < 38 else
-        ("B", INDIGO,  f"rgba(129,140,248,.15)") if risk < 42 else
-        ("C", YELLOW,  f"rgba(251,191,36,.15)")  if risk < 47 else
-        ("D", ORANGE,  f"rgba(251,146,60,.15)")  if risk < 52 else
-        ("E", RED,     f"rgba(248,113,113,.15)")
-    )
-    grade_label = {"A":"최저위험","B":"낮음","C":"보통","D":"높음","E":"최고위험"}[grade]
+    _gi = risk_grade_info(risk)
+    grade       = _gi["grade"]
+    grade_color = _gi["color"]
+    grade_bg    = _gi["bg"]
+    grade_label = _gi["label"]
 
     avg_fire     = np.mean([v["fire"]     for v in DISTRICT_PROFILES.values()])
     avg_theft    = np.mean([v["theft"]    for v in DISTRICT_PROFILES.values()])
