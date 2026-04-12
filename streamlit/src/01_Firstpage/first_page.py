@@ -810,15 +810,22 @@ def show_page(session, selected_ym):
 
     st.markdown("---")
 
-    # ─── 7. 영등포 vs 서초 비교 (성혁님 v3 기능 유지 ㅡㅡ+) ───
+    # ─── 7. 구 비교 (동적 선택) ───
     _section_header("💡", "같은 보험, 다른 가격 — 왜?",
-                    caption="동일한 보장 내용이라도 지역 위험도에 따라 보험료가 달라집니다",
+                    caption="두 자치구를 선택하면 보험료 차이 이유를 AI가 분석합니다",
                     color="#10b981", bg="#f0fdf4", text="#064e3b")
+
+    _gu_list = sorted(agg_df["GU_NAME"].tolist())
+    _sel_col1, _sel_col2 = st.columns(2)
+    _default_a = _gu_list.index("영등포구") if "영등포구" in _gu_list else 0
+    _default_b = _gu_list.index("서초구")   if "서초구"   in _gu_list else 1
+    _gu_a = _sel_col1.selectbox("비교 구 A", _gu_list, index=_default_a, key="cmp_gu_a")
+    _gu_b = _sel_col2.selectbox("비교 구 B", _gu_list, index=_default_b, key="cmp_gu_b")
 
     comp_cols = st.columns(2)
     gu_styles = [
-        ("영등포구", "#ef4444", "rgba(239,68,68,0.12)", "rgba(239,68,68,0.4)"),
-        ("서초구",   "#6366f1", "rgba(99,102,241,0.12)", "rgba(99,102,241,0.4)"),
+        (_gu_a, "#ef4444", "rgba(239,68,68,0.12)", "rgba(239,68,68,0.4)"),
+        (_gu_b, "#6366f1", "rgba(99,102,241,0.12)", "rgba(99,102,241,0.4)"),
     ]
 
     for (gu_name, accent, bg, border), col in zip(gu_styles, comp_cols):
@@ -874,7 +881,7 @@ def show_page(session, selected_ym):
 
     # ─── 7b. Cortex LLM 보험료 차이 인사이트 ───
     _cmp_rows = []
-    for _gu in ["영등포구", "서초구"]:
+    for _gu in [_gu_a, _gu_b]:
         _tmp = agg_df[agg_df["GU_NAME"] == _gu]
         if not _tmp.empty:
             _cmp_rows.append(_tmp.iloc[0])
