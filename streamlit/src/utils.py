@@ -8,7 +8,7 @@ DEMO_DISTRICTS = [
 ]
 
 DISTRICT_PROFILES = {
-    "강남구":{"pop":547000,"risk":42.3,"fire":28.5,"theft":18.2,"building":22.1,"weather":15.8,"base":52000},
+    "강남구":{"pop":547000,"risk":42.3,"fire":28.5,"theft":18.2,"building":22.1,"weather":15.8,"base":57000},
     "강동구":{"pop":453000,"risk":38.7,"fire":22.1,"theft":15.3,"building":25.4,"weather":14.2,"base":41000},
     "강북구":{"pop":303000,"risk":52.8,"fire":31.2,"theft":22.5,"building":42.3,"weather":18.7,"base":38000},
     "강서구":{"pop":576000,"risk":41.2,"fire":25.8,"theft":19.1,"building":28.3,"weather":16.4,"base":43000},
@@ -22,7 +22,7 @@ DISTRICT_PROFILES = {
     "동작구":{"pop":395000,"risk":44.7,"fire":24.8,"theft":19.5,"building":34.1,"weather":17.8,"base":43000},
     "마포구":{"pop":376000,"risk":40.1,"fire":24.2,"theft":21.3,"building":25.8,"weather":15.1,"base":48000},
     "서대문구":{"pop":314000,"risk":45.3,"fire":25.1,"theft":18.7,"building":37.5,"weather":18.2,"base":41000},
-    "서초구":{"pop":432000,"risk":37.8,"fire":22.8,"theft":16.5,"building":19.3,"weather":14.7,"base":55000},
+    "서초구":{"pop":432000,"risk":37.8,"fire":22.8,"theft":16.5,"building":19.3,"weather":14.7,"base":54000},
     "성동구":{"pop":305000,"risk":41.5,"fire":25.3,"theft":19.8,"building":27.4,"weather":15.9,"base":46000},
     "성북구":{"pop":440000,"risk":46.8,"fire":26.7,"theft":20.2,"building":38.8,"weather":18.5,"base":39000},
     "송파구":{"pop":667000,"risk":38.2,"fire":23.1,"theft":17.5,"building":21.8,"weather":14.5,"base":50000},

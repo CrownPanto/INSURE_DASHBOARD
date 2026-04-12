@@ -673,15 +673,12 @@ def show_page(session, selected_ym):
         for col, (label, fcol), fcolor in zip([fc1, fc2, fc3, fc4], risk_factors.items(), factor_colors):
             fc_corr = agg_df[fcol].corr(agg_df["ADJUSTED_PREMIUM_MONTHLY"])
             bar_w = int(abs(fc_corr) * 100)
-            interp = "강한" if abs(fc_corr) > 0.7 else "중간" if abs(fc_corr) > 0.4 else "약한"
-            direct = "양의" if fc_corr > 0 else "음의"
             col.markdown(
                 f'<div style="background:#ffffff; border:1px solid #e2e8f0; border-top:3px solid {fcolor}; '
                 f'border-radius:8px; padding:14px; text-align:center;">'
                 f'<div style="font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">{label}</div>'
                 f'<div style="font-size:26px; font-weight:800; color:{fcolor}; font-family:monospace;">{fc_corr:+.3f}</div>'
-                f'<div style="font-size:10px; color:#64748b; margin:4px 0;">{interp} {direct} 상관</div>'
-                f'<div style="background:#f1f5f9; border-radius:4px; height:6px; margin-top:6px;">'
+                f'<div style="background:#f1f5f9; border-radius:4px; height:6px; margin-top:10px;">'
                 f'<div style="background:{fcolor}; width:{bar_w}%; height:6px; border-radius:4px;"></div>'
                 f'</div></div>',
                 unsafe_allow_html=True,
@@ -810,67 +807,160 @@ def show_page(session, selected_ym):
 
     st.markdown("---")
 
-    # ─── 7. 영등포 vs 서초 비교 (성혁님 v3 기능 유지 ㅡㅡ+) ───
+    # ─── 7. 구 선택 비교 ───
     _section_header("💡", "같은 보험, 다른 가격 — 왜?",
-                    caption="동일한 보장 내용이라도 지역 위험도에 따라 보험료가 달라집니다",
+                    caption="두 자치구를 직접 선택해서 보험료 차이를 비교하세요",
                     color="#10b981", bg="#f0fdf4", text="#064e3b")
 
-    comp_cols = st.columns(2)
-    gu_styles = [
-        ("영등포구", "#ef4444", "rgba(239,68,68,0.12)", "rgba(239,68,68,0.4)"),
-        ("서초구",   "#6366f1", "rgba(99,102,241,0.12)", "rgba(99,102,241,0.4)"),
-    ]
+    # 구 목록 (데이터에 있는 것만)
+    gu_list = sorted(agg_df["GU_NAME"].tolist())
+    _default_a = gu_list.index("영등포구") if "영등포구" in gu_list else 0
+    _default_b = gu_list.index("서초구")   if "서초구"   in gu_list else 1
 
-    for (gu_name, accent, bg, border), col in zip(gu_styles, comp_cols):
+    sel_col1, sel_col2 = st.columns(2)
+    with sel_col1:
+        st.markdown('<div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;">🅐 비교 구 선택</div>', unsafe_allow_html=True)
+        comp_gu_a = st.selectbox("구 A", gu_list, index=_default_a, label_visibility="collapsed", key="comp_gu_a")
+    with sel_col2:
+        st.markdown('<div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;">🅑 비교 구 선택</div>', unsafe_allow_html=True)
+        comp_gu_b = st.selectbox("구 B", gu_list, index=_default_b, label_visibility="collapsed", key="comp_gu_b")
+
+    comp_pairs = [
+        (comp_gu_a, "#ef4444", "rgba(239,68,68,0.12)", "rgba(239,68,68,0.4)"),
+        (comp_gu_b, "#6366f1", "rgba(99,102,241,0.12)", "rgba(99,102,241,0.4)"),
+    ]
+    comp_cols = st.columns(2)
+
+    _comp_data = {}
+    for (gu_name, accent, card_bg, border), col in zip(comp_pairs, comp_cols):
         row = agg_df[agg_df["GU_NAME"] == gu_name]
         if row.empty:
             continue
         r = row.iloc[0]
+        _comp_data[gu_name] = r
         diff_pct = (r["ADJUSTED_PREMIUM_MONTHLY"] - avg_premium) / avg_premium * 100
         diff_txt = f"+{diff_pct:.0f}%" if diff_pct >= 0 else f"{diff_pct:.0f}%"
-        max_risk_val = 50
+        diff_bg  = "#fef2f2" if diff_pct >= 0 else "#f0fdf4"
+        diff_col = "#ef4444" if diff_pct >= 0 else "#16a34a"
+        max_risk_val = 60
 
-        def bar_html(icon, label, val, ac):
+        def _bar(icon, label, val, ac):
             w = int(min(val / max_risk_val * 100, 100))
             return (
                 f'<div style="margin-bottom:8px;">'
                 f'<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
-                f'<span style="font-size:11px;color:#000000;">{icon} {label}</span>'
-                f'<span style="font-size:11px;font-weight:700;color:#000000;">{val:.0f}점</span>'
+                f'<span style="font-size:11px;color:#374151;">{icon} {label}</span>'
+                f'<span style="font-size:11px;font-weight:700;color:#111827;">{val:.0f}점</span>'
                 f'</div>'
-                f'<div style="background:rgba(0,0,0,0.08);border-radius:4px;height:6px;">'
-                f'<div style="background:{ac};width:{w}%;height:6px;border-radius:4px;opacity:0.8;"></div>'
+                f'<div style="background:rgba(0,0,0,0.08);border-radius:4px;height:7px;">'
+                f'<div style="background:{ac};width:{w}%;height:7px;border-radius:4px;"></div>'
                 f'</div></div>'
             )
 
         bars = (
-            bar_html("🔥", "화재 위험", r["FIRE_RISK_SCORE"],     accent) +
-            bar_html("🔓", "도난 위험", r["THEFT_RISK_SCORE"],    accent) +
-            bar_html("🏚", "건물 노후", r["BUILDING_RISK_SCORE"], accent) +
-            bar_html("🌧", "기상 위험", r["WEATHER_RISK_SCORE"],  accent)
+            _bar("🔥", "화재 위험", r["FIRE_RISK_SCORE"],     accent) +
+            _bar("🔓", "도난 위험", r["THEFT_RISK_SCORE"],    accent) +
+            _bar("🏚", "건물 노후", r["BUILDING_RISK_SCORE"], accent) +
+            _bar("🌧", "기상 위험", r["WEATHER_RISK_SCORE"],  accent)
         )
 
         card = f"""
-        <div style="background:{bg};border:1.5px solid {border};border-radius:16px;padding:24px 28px;">
+        <div style="background:{card_bg};border:1.5px solid {border};border-radius:16px;padding:24px 28px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-                <span style="font-size:22px;font-weight:800;color:#000000;">📍 {gu_name}</span>
-                <span style="font-size:12px;font-weight:700;color:#000000;background:rgba(0,0,0,0.08);padding:4px 10px;border-radius:20px;">평균 대비 {diff_txt}</span>
+                <span style="font-size:20px;font-weight:800;color:#111827;">📍 {gu_name}</span>
+                <span style="font-size:12px;font-weight:700;color:{diff_col};background:{diff_bg};
+                             padding:4px 10px;border-radius:20px;border:1px solid {diff_col}33;">평균 대비 {diff_txt}</span>
             </div>
             <div style="margin-bottom:16px;">
-                <div style="font-size:11px;color:#555555;font-weight:600;margin-bottom:4px;">💰 월 보험료</div>
-                <div style="font-size:34px;font-weight:900;color:{accent};line-height:1.1;">₩{r['ADJUSTED_PREMIUM_MONTHLY']:,.0f}</div>
+                <div style="font-size:11px;color:#6b7280;font-weight:600;margin-bottom:4px;">💰 월 보험료</div>
+                <div style="font-size:34px;font-weight:900;color:{accent};line-height:1.1;">&#8361;{r['ADJUSTED_PREMIUM_MONTHLY']:,.0f}</div>
             </div>
             <div style="margin-bottom:20px;">
-                <div style="font-size:11px;color:#555555;font-weight:600;margin-bottom:4px;">⚠️ 종합 위험도</div>
-                <div style="font-size:26px;font-weight:800;color:#000000;">{r['COMPOSITE_RISK_SCORE']:.1f}<span style="font-size:14px;color:#666;">점</span></div>
+                <div style="font-size:11px;color:#6b7280;font-weight:600;margin-bottom:4px;">⚠️ 종합 위험도</div>
+                <div style="font-size:26px;font-weight:800;color:#111827;">{r['COMPOSITE_RISK_SCORE']:.1f}<span style="font-size:14px;color:#9ca3af;">점</span></div>
             </div>
-            <div style="font-size:11px;color:#444444;font-weight:600;margin-bottom:10px;">📊 위험 요소 분석</div>
+            <div style="font-size:11px;color:#6b7280;font-weight:600;margin-bottom:10px;">📊 위험 요소 분석</div>
             {bars}
         </div>
         """
-
         with col:
             st.markdown(card, unsafe_allow_html=True)
+
+    # ── 차이 설명 박스 ──────────────────────────────────────────
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+    if len(_comp_data) == 2:
+        ra = _comp_data[comp_gu_a]
+        rb = _comp_data[comp_gu_b]
+        prem_a  = ra["ADJUSTED_PREMIUM_MONTHLY"]
+        prem_b  = rb["ADJUSTED_PREMIUM_MONTHLY"]
+        risk_a  = ra["COMPOSITE_RISK_SCORE"]
+        risk_b  = rb["COMPOSITE_RISK_SCORE"]
+        prem_diff = prem_b - prem_a
+        risk_diff = risk_b - risk_a
+
+        # 역설 여부: 위험도가 낮은데 보험료가 높은 경우
+        paradox = (risk_b < risk_a and prem_b > prem_a) or (risk_b > risk_a and prem_b < prem_a)
+
+        if paradox:
+            higher_prem_gu  = comp_gu_b if prem_b > prem_a else comp_gu_a
+            lower_risk_gu   = comp_gu_b if risk_b < risk_a else comp_gu_a
+            prem_gap        = abs(prem_diff)
+            risk_gap        = abs(risk_diff)
+            explain_html = f"""
+<div style="background:linear-gradient(135deg,#1e1b4b,#1e3a5f);border:1.5px solid #6366f1;
+            border-radius:14px;padding:20px 24px;">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+    <span style="font-size:18px;">🤔</span>
+    <span style="color:#e0e7ff;font-size:14px;font-weight:800;">왜 위험도가 낮은 {lower_risk_gu}의 보험료가 더 높을까요?</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+    <div style="background:rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px;text-align:center;">
+      <div style="color:#94a3b8;font-size:10px;font-weight:700;margin-bottom:6px;">보험료 차이</div>
+      <div style="color:#f87171;font-size:20px;font-weight:900;">&#8361;{prem_gap:,.0f}</div>
+      <div style="color:#94a3b8;font-size:10px;margin-top:4px;">{higher_prem_gu}가 더 높음</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px;text-align:center;">
+      <div style="color:#94a3b8;font-size:10px;font-weight:700;margin-bottom:6px;">위험도 차이</div>
+      <div style="color:#34d399;font-size:20px;font-weight:900;">{risk_gap:.1f}점</div>
+      <div style="color:#94a3b8;font-size:10px;margin-top:4px;">{lower_risk_gu}가 더 낮음</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px;text-align:center;">
+      <div style="color:#94a3b8;font-size:10px;font-weight:700;margin-bottom:6px;">결론</div>
+      <div style="color:#fbbf24;font-size:13px;font-weight:800;line-height:1.4;">위험도 역설</div>
+      <div style="color:#94a3b8;font-size:10px;margin-top:4px;">아래 설명 참조</div>
+    </div>
+  </div>
+  <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:14px 16px;
+              border-left:3px solid #fbbf24;">
+    <div style="color:#fbbf24;font-size:12px;font-weight:800;margin-bottom:8px;">📌 핵심 원리: 보험료 = 위험도 × 자산가치</div>
+    <div style="color:#cbd5e1;font-size:12px;line-height:1.9;">
+      • <b style="color:#f1f5f9;">위험도(리스크 점수)</b>는 화재·도난·기상 등 사고 발생 가능성을 나타냅니다<br>
+      • <b style="color:#f1f5f9;">자산가치</b>는 해당 지역의 평균 재산 규모(가전제품·전자기기·고가품 등)를 반영합니다<br>
+      • <b style="color:#fbbf24;">{higher_prem_gu}</b>는 위험도가 낮더라도 <b style="color:#fbbf24;">고가 자산</b>이 많아 사고 시 손해액 자체가 크기 때문에<br>
+      &nbsp;&nbsp;기본 보험료(순보험료)가 높게 책정됩니다<br>
+      • 즉, "사고 날 확률"은 낮아도 "사고 났을 때 피해 금액"이 커서 보험료가 높아집니다
+    </div>
+  </div>
+</div>"""
+        else:
+            higher_gu   = comp_gu_b if prem_b > prem_a else comp_gu_a
+            lower_gu    = comp_gu_b if prem_b < prem_a else comp_gu_a
+            prem_gap    = abs(prem_diff)
+            explain_html = f"""
+<div style="background:linear-gradient(135deg,#052e16,#0c4a1e);border:1.5px solid #22c55e;
+            border-radius:14px;padding:20px 24px;">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+    <span style="font-size:18px;">✅</span>
+    <span style="color:#bbf7d0;font-size:14px;font-weight:800;">위험도와 보험료가 일치하는 정상적인 패턴입니다</span>
+  </div>
+  <div style="color:#86efac;font-size:12px;line-height:1.9;">
+    • <b style="color:#f1f5f9;">{higher_gu}</b>는 위험도가 높아 보험료도 높습니다 (&#8361;{prem_gap:,.0f} 차이)<br>
+    • 위험도 점수가 높을수록 사고 빈도가 높아 보험사 입장에서 위험 비용이 증가합니다<br>
+    • 두 구 중 더 안전한 지역에 거주하면 같은 조건으로 보험료를 절감할 수 있습니다
+  </div>
+</div>"""
+
+        st.markdown(explain_html, unsafe_allow_html=True)
 
     # ─── 8. 전체 데이터 테이블 ───
     with st.expander("📋 전체 25개 구 데이터 보기", expanded=False):
