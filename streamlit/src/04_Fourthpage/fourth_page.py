@@ -63,8 +63,13 @@ def show_page(session, selected_ym):
             <div style="color:{INDIGO}; font-size:11px; font-weight:700; text-transform:uppercase;
                         letter-spacing:.12em; margin-bottom:4px;">Engine Detail</div>
             <div style="color:#0f172a; font-size:22px; font-weight:800; letter-spacing:-.02em;">⚙️ 엔진 상세</div>
-            <div style="color:#475569; font-size:12px; margin-top:3px;">
-                구별 리스크 분석 · 7단계 보험료 산출 · 미래 예측 모델
+            <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
+                <span style="background:#eef2ff; border:1px solid #a5b4fc; color:#3730a3;
+                             font-size:11px; font-weight:700; padding:2px 10px; border-radius:20px;">🎯 구별 리스크 분석</span>
+                <span style="background:#fff7ed; border:1px solid #fdba74; color:#9a3412;
+                             font-size:11px; font-weight:700; padding:2px 10px; border-radius:20px;">💰 7단계 보험료 산출</span>
+                <span style="background:#fefce8; border:1px solid #fde047; color:#713f12;
+                             font-size:11px; font-weight:700; padding:2px 10px; border-radius:20px;">📈 미래 예측 모델</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -734,13 +739,24 @@ def show_page(session, selected_ym):
             d_pct     = abs(delta / y_all[-1] * 100)
             end_label = forecast_ym[-1] if forecast_ym else "2027-12"
             st.markdown(f"""
-            <div style="background:linear-gradient(90deg,{INDIGO}18,{INDIGO}06);
-                        border:1px solid {INDIGO}44; border-radius:10px;
-                        padding:14px 20px; margin-bottom:16px;
-                        display:flex; align-items:center; justify-content:space-between;">
-                <span style="color:{TXT2}; font-size:12px; font-weight:600;">{end_label} 예측 보험료</span>
-                <span style="color:{TXT1}; font-size:18px; font-weight:800;">₩{forecast_vals[-1]:,.0f} / 월</span>
-                <span style="color:{d_col}; font-size:14px; font-weight:700;">{d_icon} ₩{abs(delta):,.0f} ({d_pct:.1f}%)</span>
+            <div style="background:linear-gradient(135deg,#1e1b4b,#312e81);
+                        border:1.5px solid #6366f1; border-radius:12px;
+                        padding:16px 22px; margin-bottom:16px;">
+                <div style="color:#a5b4fc; font-size:10px; font-weight:700;
+                            text-transform:uppercase; letter-spacing:.1em; margin-bottom:8px;">
+                    📈 {end_label} 예측 보험료
+                </div>
+                <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                    <span style="color:#ffffff; font-size:26px; font-weight:900;
+                                 letter-spacing:-.02em;">₩{forecast_vals[-1]:,.0f}</span>
+                    <span style="color:#c7d2fe; font-size:14px; font-weight:600;">/ 월</span>
+                    <span style="background:{'rgba(248,113,113,0.2)' if delta>0 else 'rgba(52,211,153,0.2)'};
+                                 border:1px solid {d_col};
+                                 color:{d_col}; font-size:13px; font-weight:700;
+                                 padding:3px 10px; border-radius:20px; margin-left:4px;">
+                        {d_icon} ₩{abs(delta):,.0f} ({d_pct:.1f}%)
+                    </span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -780,14 +796,14 @@ def show_page(session, selected_ym):
                 bgcolor=BG, borderpad=3,
             )
         fig_trend.update_layout(
-            height=260, plot_bgcolor=BG, paper_bgcolor=BG,
+            height=300, width=560, plot_bgcolor=BG, paper_bgcolor=BG,
             font=dict(color=TXT1),
             xaxis=dict(
                 type="date",
                 tickformat="%Y-%m",
                 tickfont=dict(color=TXT2, size=9),
                 showgrid=False, tickangle=45, nticks=20,
-                dtick="M6",                          # 6개월 단위 눈금
+                dtick="M6",
             ),
             yaxis=dict(tickprefix="₩", tickfont=dict(color=TXT2),
                        showgrid=True, gridcolor=BORDER, zeroline=False),
@@ -795,7 +811,9 @@ def show_page(session, selected_ym):
                         bgcolor="rgba(0,0,0,0)"),
             margin=dict(l=10, r=10, t=40, b=60),
         )
-        st.plotly_chart(fig_trend, use_container_width=True)
+        _c1, _c2, _c3 = st.columns([1, 6, 1])
+        with _c2:
+            st.plotly_chart(fig_trend, use_container_width=False)
 
         # ── 예측 모델 상세 expander ────────────────────────────────────
         with st.expander("📐 예측 모델 상세 — 모델 비교 & 검증 점수"):
