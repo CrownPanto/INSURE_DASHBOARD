@@ -6,6 +6,21 @@ import json
 import numpy as np
 import utils  # sys.path 설정이 메인에 되어 있어야 함 ㅡㅡ+
 
+def _section_header(icon, title, caption="", color="#6366f1", bg="#eef2ff", text="#1e1b4b"):
+    cap_html = (f'<div style="color:{text}; opacity:0.65; font-size:0.78rem; '
+                f'margin-top:3px; font-weight:500;">{caption}</div>') if caption else ""
+    st.markdown(f"""
+        <div style="background:{bg}; border-left:5px solid {color};
+                    border-radius:8px; padding:12px 18px; margin:24px 0 14px 0;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.2rem;">{icon}</span>
+                <span style="color:{text}; font-size:1.05rem; font-weight:800;
+                             letter-spacing:-0.3px;">{title}</span>
+            </div>
+            {cap_html}
+        </div>
+    """, unsafe_allow_html=True)
+
 def show_page(session, selected_ym):
     st.title("서울시 동산보험료 지도")
     st.caption("25개 자치구별 위험도 기반 보험료 한눈에 보기")
@@ -106,7 +121,7 @@ def show_page(session, selected_ym):
     st.markdown("---")
 
     # ─── 4. Top 3 vs Bottom 3 섹션 ───
-    st.subheader("보험료 Top 3 vs Bottom 3")
+    _section_header("🏆", "보험료 Top 3 vs Bottom 3", color="#f97316", bg="#fff7ed", text="#7c2d12")
     sorted_df = agg_df.sort_values("ADJUSTED_PREMIUM_MONTHLY", ascending=False).reset_index(drop=True)
 
     col_high, col_low = st.columns(2)
@@ -173,8 +188,9 @@ def show_page(session, selected_ym):
     st.markdown("---")
 
     # ─── 5. 서울시 지도 시각화 ───
-    st.subheader("서울시 자치구별 위험도 지도")
-    st.caption("색상이 빨갈수록 위험도 높음 · 보험료 높음 | 마우스 오버로 상세 확인")
+    _section_header("🗺️", "서울시 자치구별 위험도 지도",
+                    caption="색상이 빨갈수록 위험도 높음 · 보험료 높음 | 마우스 오버로 상세 확인",
+                    color="#ef4444", bg="#fef2f2", text="#7f1d1d")
 
     try:
         import os
@@ -252,8 +268,9 @@ def show_page(session, selected_ym):
     st.markdown("---")
 
     # ─── 6. 위험도 vs 보험료 상관관계 분석 ───
-    st.subheader("위험도 vs 보험료 — 상관관계 분석")
-    st.caption("위험도가 높을수록 보험료가 비싼가? 데이터로 확인하세요")
+    _section_header("📈", "위험도 vs 보험료 — 상관관계 분석",
+                    caption="위험도가 높을수록 보험료가 비싼가? 데이터로 확인하세요",
+                    color="#6366f1", bg="#eef2ff", text="#1e1b4b")
 
     avg_risk = agg_df["COMPOSITE_RISK_SCORE"].mean()
 
@@ -444,47 +461,64 @@ def show_page(session, selected_ym):
     )
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── 사분면 범례 ──
-    lc1, lc2, lc3, lc4 = st.columns(4)
-    for col, color, label, desc in [
-        (lc1, "#ef4444", "🔴 고위험·고보험료", "위험도↑ 보험료↑"),
-        (lc2, "#f97316", "🟠 고위험·저보험료", "보험료 저평가 가능성"),
-        (lc3, "#6366f1", "🔵 저위험·고보험료", "보험료 고평가 가능성"),
-        (lc4, "#22c55e", "🟢 저위험·저보험료", "위험도↓ 보험료↓"),
-    ]:
-        col.markdown(
-            f'<div style="border-left:3px solid {color}; padding:6px 10px; '
-            f'background:rgba(0,0,0,0.03); border-radius:0 6px 6px 0; margin:2px 0;">'
-            f'<div style="font-size:11px; font-weight:700; color:#1e293b;">{label}</div>'
-            f'<div style="font-size:10px; color:#475569;">{desc}</div></div>',
-            unsafe_allow_html=True,
-        )
-
-    # 사분면 요약 카드
-    quad_cols = st.columns(4)
-    quads = [
-        ("🔴 고위험·고보험료", agg_df[(agg_df["COMPOSITE_RISK_SCORE"]>=avg_risk)&(agg_df["ADJUSTED_PREMIUM_MONTHLY"]>=avg_premium)]),
-        ("🟡 고위험·저보험료", agg_df[(agg_df["COMPOSITE_RISK_SCORE"]>=avg_risk)&(agg_df["ADJUSTED_PREMIUM_MONTHLY"]< avg_premium)]),
-        ("🔵 저위험·고보험료", agg_df[(agg_df["COMPOSITE_RISK_SCORE"]< avg_risk)&(agg_df["ADJUSTED_PREMIUM_MONTHLY"]>=avg_premium)]),
-        ("🟢 저위험·저보험료", agg_df[(agg_df["COMPOSITE_RISK_SCORE"]< avg_risk)&(agg_df["ADJUSTED_PREMIUM_MONTHLY"]< avg_premium)]),
+    # ── 사분면 범례 + 요약 카드 (통합) ──
+    quad_data = [
+        {
+            "emoji": "🔴", "label": "고위험·고보험료", "desc": "위험도↑ 보험료↑",
+            "color": "#ef4444", "bg": "#fef2f2", "border": "#fca5a5", "text": "#7f1d1d",
+            "sub": "#991b1b",
+            "subset": agg_df[(agg_df["COMPOSITE_RISK_SCORE"]>=avg_risk)&(agg_df["ADJUSTED_PREMIUM_MONTHLY"]>=avg_premium)],
+        },
+        {
+            "emoji": "🟠", "label": "고위험·저보험료", "desc": "보험료 저평가 가능성",
+            "color": "#f97316", "bg": "#fff7ed", "border": "#fdba74", "text": "#7c2d12",
+            "sub": "#9a3412",
+            "subset": agg_df[(agg_df["COMPOSITE_RISK_SCORE"]>=avg_risk)&(agg_df["ADJUSTED_PREMIUM_MONTHLY"]< avg_premium)],
+        },
+        {
+            "emoji": "🔵", "label": "저위험·고보험료", "desc": "보험료 고평가 가능성",
+            "color": "#6366f1", "bg": "#eef2ff", "border": "#a5b4fc", "text": "#1e1b4b",
+            "sub": "#3730a3",
+            "subset": agg_df[(agg_df["COMPOSITE_RISK_SCORE"]< avg_risk)&(agg_df["ADJUSTED_PREMIUM_MONTHLY"]>=avg_premium)],
+        },
+        {
+            "emoji": "🟢", "label": "저위험·저보험료", "desc": "위험도↓ 보험료↓",
+            "color": "#22c55e", "bg": "#f0fdf4", "border": "#86efac", "text": "#14532d",
+            "sub": "#166534",
+            "subset": agg_df[(agg_df["COMPOSITE_RISK_SCORE"]< avg_risk)&(agg_df["ADJUSTED_PREMIUM_MONTHLY"]< avg_premium)],
+        },
     ]
-    for col, (label, subset) in zip(quad_cols, quads):
+
+    quad_cols = st.columns(4)
+    for col, q in zip(quad_cols, quad_data):
+        names = " · ".join(q["subset"]["GU_NAME"].tolist()) if len(q["subset"]) > 0 else "없음"
+        cnt   = len(q["subset"])
         with col:
-            names = " · ".join(subset["GU_NAME"].tolist()) if len(subset) > 0 else "없음"
-            st.markdown(f"""
-            <div style="background:rgba(0,0,0,0.03); border-radius:10px;
-                        padding:12px; border:1px solid rgba(0,0,0,0.1); min-height:90px;">
-                <div style="font-size:11px; font-weight:700; color:#1e293b; margin-bottom:6px;">{label}</div>
-                <div style="font-size:11px; color:#334155; line-height:1.6;">{names}</div>
+            col.markdown(f"""
+            <div style="background:{q['bg']}; border:1.5px solid {q['border']};
+                        border-top:4px solid {q['color']};
+                        border-radius:10px; padding:14px 14px 12px 14px; min-height:120px;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                    <span style="font-size:1rem;">{q['emoji']}</span>
+                    <span style="font-size:0.8rem; font-weight:800;
+                                 color:{q['text']};">{q['label']}</span>
+                    <span style="margin-left:auto; background:{q['color']};
+                                 color:#fff; font-size:0.65rem; font-weight:700;
+                                 padding:1px 7px; border-radius:20px;">{cnt}개구</span>
+                </div>
+                <div style="font-size:0.7rem; color:{q['sub']};
+                            margin-bottom:8px; font-weight:600;">{q['desc']}</div>
+                <div style="font-size:0.72rem; color:{q['text']};
+                            line-height:1.7; font-weight:500;">{names}</div>
             </div>
             """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ─── 6-3. 위험도가 높은 이유 — 요인별 분석 ───
-    st.markdown("---")
-    st.subheader("왜 위험도가 높은가? — 요인별 분석")
-    st.caption("4개 위험 요소(화재·도난·건물노후·기상)가 종합 위험도에 얼마나 기여하는지 확인하세요")
+    _section_header("🔍", "왜 위험도가 높은가? — 요인별 분석",
+                    caption="4개 위험 요소(화재·도난·건물노후·기상)가 종합 위험도에 얼마나 기여하는지 확인하세요",
+                    color="#8b5cf6", bg="#f5f3ff", text="#2e1065")
 
     risk_factors = {
         "🔥 화재": "FIRE_RISK_SCORE",
@@ -626,8 +660,9 @@ def show_page(session, selected_ym):
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ─── 6-2. 구별 위험도 & 보험료 비교 (horizontal bar) ───
-    st.subheader("구별 위험도 & 보험료 한눈에 비교")
-    st.caption("보험료 순 정렬 | 파란 점선 = 서울 평균 | 주황 점선 = 중앙값 | 색상 = 위험도")
+    _section_header("📊", "구별 위험도 & 보험료 한눈에 비교",
+                    caption="보험료 순 정렬 | 파란 점선 = 서울 평균 | 주황 점선 = 중앙값 | 색상 = 위험도",
+                    color="#0ea5e9", bg="#f0f9ff", text="#0c4a6e")
 
     # 전체 25개 구 모두 표시 (이상치 제외 없음)
     df_bar = agg_df.sort_values("ADJUSTED_PREMIUM_MONTHLY", ascending=True).copy()
@@ -746,8 +781,9 @@ def show_page(session, selected_ym):
     st.markdown("---")
 
     # ─── 7. 영등포 vs 서초 비교 (성혁님 v3 기능 유지 ㅡㅡ+) ───
-    st.subheader("같은 보험, 다른 가격 — 왜?")
-    st.caption("동일한 보장 내용이라도 지역 위험도에 따라 보험료가 달라집니다")
+    _section_header("💡", "같은 보험, 다른 가격 — 왜?",
+                    caption="동일한 보장 내용이라도 지역 위험도에 따라 보험료가 달라집니다",
+                    color="#10b981", bg="#f0fdf4", text="#064e3b")
 
     comp_cols = st.columns(2)
     gu_styles = [

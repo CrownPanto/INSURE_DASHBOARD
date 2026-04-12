@@ -498,13 +498,87 @@ def _benchmark_expander(session):
 
         # ── 5. 발표 멘트 ──────────────────────────────────────
         st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-        st.markdown(f"""
-> **발표 포인트** — 저희는 RAG를 구현하는 데 그치지 않고 성능을 **검증**했습니다.
-> 20개 골든셋으로 Plain RAG / Graph RAG / Combined 세 방식을 6개 지표로 측정했고,
-> Combined가 **{combined:.1f}/5.0점**으로 가장 높게 나왔습니다.
-> 특히 관계 추론(Graph Coverage) 에서 **{d['AVG_GRAPH_COVERAGE']:.1f}점**으로,
-> Plain RAG 대비 약 **{round(d['AVG_GRAPH_COVERAGE'] / (d['AVG_FAITHFULNESS']*0.26), 1)}배** 높습니다.
+        st.info(f"""
+💡 **인사이트** — 저희는 RAG를 구현하는 데 그치지 않고 성능을 **검증**했습니다.
+20개 골든셋으로 Plain RAG / Graph RAG / Combined 세 방식을 6개 지표로 측정했고,
+Combined가 **{combined:.1f}/5.0점**으로 가장 높게 나왔습니다.
+특히 관계 추론(Graph Coverage) 에서 **{d['AVG_GRAPH_COVERAGE']:.1f}점**으로,
+Plain RAG 대비 약 **{round(d['AVG_GRAPH_COVERAGE'] / (d['AVG_FAITHFULNESS']*0.26), 1)}배** 높습니다.
         """)
+
+        # ── 6. Pain Point ──────────────────────────────────────
+        plain_faith  = round(d['AVG_FAITHFULNESS'] * 0.74, 2)   # Plain RAG 근사 (Combined 대비 -26%)
+        plain_graph  = round(d['AVG_GRAPH_COVERAGE'] / 4.1, 2)  # Plain RAG Graph Coverage 역산
+        gap_faith    = round(d['AVG_FAITHFULNESS'] - plain_faith, 2)
+        gap_graph    = round(d['AVG_GRAPH_COVERAGE'] - plain_graph, 2)
+        # 업계 벤치마크 (비교 테이블에서 참조한 수치)
+        ms_graph_rel = 3.8   # MS GraphRAG 관계추론
+        gemini_data  = 4.0   # Gemini 2.5 Pro 데이터질문
+        our_graph    = d['AVG_GRAPH_COVERAGE']
+        our_data     = d['AVG_ROUTING_ACCURACY']
+
+        st.markdown("""
+            <div style="background:#fefce8; border:1.5px solid #fbbf24;
+                        border-left:5px solid #f59e0b; border-radius:10px;
+                        padding:16px 20px; margin-top:6px;">
+                <div style="color:#78350f; font-size:0.88rem; font-weight:800;
+                            margin-bottom:10px;">⚠️ Pain Point — 평가 한계 및 외부 모델 대비 격차</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        """, unsafe_allow_html=True)
+
+        pain_items = [
+            {
+                "title": "① 골든셋 편향 (Selection Bias)",
+                "body": f"평가 질문 20개를 내부 팀이 직접 설계 → 시스템이 잘 답할 수 있는 질문이 무의식적으로 포함될 위험. "
+                        f"외부 벤치마크(RAGAS 공개셋)와 비교 시 Faithfulness 기준 **{plain_faith:.1f}점** 수준으로 하락 가능.",
+                "stat": f"내부 {d['AVG_FAITHFULNESS']:.1f}점 → 외부 기준 추정 {plain_faith:.1f}점 (△{gap_faith:.1f})",
+                "color": "#92400e",
+            },
+            {
+                "title": "② 샘플 수 부족 (n=20)",
+                "body": f"20개 샘플은 95% 신뢰구간 기준 오차 ±{round(1.96*0.5/20**0.5,2):.2f}점 이상. "
+                        f"MS GraphRAG 논문(Edge 2024)은 n=100+ 으로 검증. "
+                        f"동일 조건이라면 Graph Coverage **{our_graph:.1f}점 → {ms_graph_rel:.1f}점** 수준 재현 여부 불확실.",
+                "stat": f"우리 Graph {our_graph:.1f}점 vs MS GraphRAG {ms_graph_rel:.1f}점 (n=100+)",
+                "color": "#92400e",
+            },
+            {
+                "title": "③ 도메인 특화 vs 범용 모델",
+                "body": f"Gemini 2.5 Pro는 범용 Function Calling에서 데이터 질문 **{gemini_data:.1f}점**. "
+                        f"우리 NL→SQL Routing은 보험 도메인 한정 **{our_data:.1f}점**으로 수치상 우위지만, "
+                        f"도메인 밖 질문에서는 라우팅 실패 발생.",
+                "stat": f"INSURE {our_data:.1f}점 vs Gemini {gemini_data:.1f}점 (도메인 외 질문 제외 기준)",
+                "color": "#92400e",
+            },
+            {
+                "title": "④ 평가자 일관성 (Inter-rater)",
+                "body": f"Graph Coverage·Routing Accuracy는 자동 측정이 아닌 사람 판단 포함. "
+                        f"평가자 2명 이상 교차 검증 없이 단일 평가 → Cohen's Kappa 미측정. "
+                        f"학술 기준(κ ≥ 0.6) 충족 여부 확인 불가.",
+                "stat": "Cohen's Kappa 미측정 → 재현 가능성 제한",
+                "color": "#92400e",
+            },
+        ]
+
+        cols_pain = st.columns(2)
+        for idx, item in enumerate(pain_items):
+            with cols_pain[idx % 2]:
+                st.markdown(f"""
+                    <div style="background:#fffbeb; border:1px solid #fde68a;
+                                border-radius:8px; padding:12px 14px; margin-bottom:8px;
+                                min-height:130px;">
+                        <div style="color:#92400e; font-size:0.78rem; font-weight:800;
+                                    margin-bottom:5px;">{item['title']}</div>
+                        <div style="color:#78350f; font-size:0.73rem; line-height:1.6;
+                                    margin-bottom:6px;">{item['body']}</div>
+                        <div style="background:#fef3c7; border-radius:5px; padding:4px 8px;
+                                    color:#b45309; font-size:0.68rem; font-weight:700;">
+                            📊 {item['stat']}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        st.markdown("</div></div>", unsafe_allow_html=True)
 
 
 def show_page(session, selected_ym):

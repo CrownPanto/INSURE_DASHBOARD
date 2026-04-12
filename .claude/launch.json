@@ -3,8 +3,12 @@
   "configurations": [
     {
       "name": "INSURE Dashboard (Streamlit)",
-      "runtimeExecutable": "conda",
-      "runtimeArgs": ["run", "-n", "INSURE_DASHBOARD", "streamlit", "run", "streamlit_app.py", "--server.port=8501"],
+      "runtimeExecutable": "streamlit",
+      "runtimeArgs": [
+        "run",
+        "streamlit_app.py",
+        "--server.port=8501"
+      ],
       "port": 8501
     }
   ]
