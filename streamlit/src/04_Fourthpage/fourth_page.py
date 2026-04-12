@@ -713,33 +713,101 @@ def show_page(session, selected_ym):
         )
         st.plotly_chart(fig_trend, use_container_width=True)
 
-        # ── 예측 방법론 설명 ───────────────────────────────────────────
-        with st.expander("📐 예측 모델 상세 — 어떻게 계산했나요?"):
+        # ── 예측 모델 상세 expander ────────────────────────────────────
+        with st.expander("📐 예측 모델 상세 — 모델 비교 & 검증 점수"):
+            # ── CV 결과 행 생성
+            cv_rows_html = ""
+            model_meta = {
+                "Ridge (선형)": {
+                    "badge": "선형",
+                    "color": "#818cf8",
+                    "desc": "Ridge Regression · 트렌드+계절성 피처",
+                    "selected": False,
+                },
+                "Gradient Boosting": {
+                    "badge": "트리부스팅",
+                    "color": "#fb923c",
+                    "desc": "GBM · XGBoost·LightGBM 동일 계열 · depth=3, n=300",
+                    "selected": True,
+                },
+            }
+            for mname, meta in model_meta.items():
+                res      = cv_results.get(mname)
+                rmse_str = f"₩{res['RMSE']:,.0f}"  if res else "—"
+                r2_str   = f"{res['R2']:.3f}"       if res else "—"
+                r2_bar   = max(0, min(1, res['R2'])) * 100 if res else 0
+                sel_bg   = "#0f2a1a" if meta["selected"] else "#1e293b"
+                sel_bd   = "#34d399" if meta["selected"] else "#334155"
+                star     = ' <span style="color:#fbbf24;">★ 채택</span>' if meta["selected"] else ""
+                cv_rows_html += f"""
+<div style="background:{sel_bg};border:1px solid {sel_bd};border-radius:8px;
+            padding:12px 16px;margin-bottom:8px;display:grid;
+            grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;">
+  <div style="background:{meta['color']}22;border:1px solid {meta['color']}66;
+              border-radius:4px;padding:2px 8px;font-size:10px;
+              color:{meta['color']};font-weight:700;white-space:nowrap;">{meta['badge']}</div>
+  <div>
+    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">{mname}{star}</div>
+    <div style="color:#64748b;font-size:10px;">{meta['desc']}</div>
+  </div>
+  <div style="text-align:right;">
+    <div style="color:#94a3b8;font-size:10px;">RMSE</div>
+    <div style="color:#e2e8f0;font-size:12px;font-weight:700;">{rmse_str}</div>
+  </div>
+  <div style="text-align:right;min-width:80px;">
+    <div style="color:#94a3b8;font-size:10px;">R² (5-fold CV)</div>
+    <div style="color:#34d399;font-size:13px;font-weight:800;">{r2_str}</div>
+    <div style="background:#1e293b;border-radius:3px;height:4px;width:80px;margin-top:3px;">
+      <div style="background:#34d399;width:{r2_bar:.0f}%;height:4px;border-radius:3px;"></div>
+    </div>
+  </div>
+</div>"""
+            # 앙상블 결과 행
+            ens_rmse = 0.0
+            if cv_results.get("Ridge (선형)") and cv_results.get("Gradient Boosting"):
+                ens_rmse = 0.4*cv_results["Ridge (선형)"]["RMSE"] + 0.6*cv_results["Gradient Boosting"]["RMSE"]
+                ens_r2   = 0.4*cv_results["Ridge (선형)"]["R2"]   + 0.6*cv_results["Gradient Boosting"]["R2"]
+                ens_bar  = max(0, min(1, ens_r2)) * 100
+                cv_rows_html += f"""
+<div style="background:linear-gradient(90deg,#0f2a2a,#0f1f2a);border:2px solid #34d399;
+            border-radius:8px;padding:12px 16px;display:grid;
+            grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;">
+  <div style="background:#34d39922;border:1px solid #34d39966;border-radius:4px;
+              padding:2px 8px;font-size:10px;color:#34d399;font-weight:700;">앙상블</div>
+  <div>
+    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">GBM 60% + Ridge 40% <span style="color:#fbbf24;">★ 최종 예측</span></div>
+    <div style="color:#64748b;font-size:10px;">TimeSeriesSplit 5-fold · 트렌드+계절성(sin/cos) 피처</div>
+  </div>
+  <div style="text-align:right;">
+    <div style="color:#94a3b8;font-size:10px;">RMSE (가중평균)</div>
+    <div style="color:#e2e8f0;font-size:12px;font-weight:700;">₩{ens_rmse:,.0f}</div>
+  </div>
+  <div style="text-align:right;min-width:80px;">
+    <div style="color:#94a3b8;font-size:10px;">R² (가중평균)</div>
+    <div style="color:#34d399;font-size:13px;font-weight:800;">{ens_r2:.3f}</div>
+    <div style="background:#1e293b;border-radius:3px;height:4px;width:80px;margin-top:3px;">
+      <div style="background:#34d399;width:{ens_bar:.0f}%;height:4px;border-radius:3px;"></div>
+    </div>
+  </div>
+</div>"""
             st.markdown(f"""
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
-  <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;">
-    <div style="color:#818cf8;font-size:11px;font-weight:700;margin-bottom:4px;">📊 데이터 기반</div>
-    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">실데이터 {len(df_trend)}개월</div>
-    <div style="color:#94a3b8;font-size:11px;">{df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]}</div>
-  </div>
-  <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;">
-    <div style="color:#fbbf24;font-size:11px;font-weight:700;margin-bottom:4px;">📈 예측 모델</div>
-    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">선형 추세 모형</div>
-    <div style="color:#94a3b8;font-size:11px;">Linear Trend Model · 최근 12개월 OLS 기울기</div>
-  </div>
-  <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;">
-    <div style="color:#34d399;font-size:11px;font-weight:700;margin-bottom:4px;">🎯 예측 기간 & 신뢰구간</div>
-    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">24개월 · ±8%</div>
-    <div style="color:#94a3b8;font-size:11px;">{forecast_ym[0] if forecast_ym else "-"} ~ {forecast_ym[-1] if forecast_ym else "-"}</div>
-  </div>
+<div style="margin-bottom:10px;">
+  <span style="color:#94a3b8;font-size:11px;">
+    📊 학습 데이터: {df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]} ({n_obs}개월) &nbsp;·&nbsp;
+    🔁 검증: TimeSeriesSplit 5-fold &nbsp;·&nbsp;
+    🎯 예측: {forecast_ym[0] if forecast_ym else "-"} ~ {forecast_ym[-1] if forecast_ym else "-"} (24개월)
+  </span>
 </div>
-<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px;">
-  <div style="color:#94a3b8;font-size:11px;line-height:1.7;">
+{cv_rows_html}
+<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;
+            padding:12px;margin-top:10px;">
+  <div style="color:#94a3b8;font-size:11px;line-height:1.8;">
     <b style="color:#e2e8f0;">📌 해석 가이드</b><br>
-    • <b style="color:#fbbf24;">노란 점선</b> = Cortex ML 예측값 (선형 트렌드 기반)<br>
-    • <b style="color:#fbbf24;">노란 음영</b> = 신뢰구간 90% (±8% 범위 — 실제값이 이 안에 들어올 확률)<br>
-    • <b style="color:#64748b;">점선 수직선</b> = 실데이터 종료 / 예측 시작 경계<br>
-    • 월별 상승 기울기: <b style="color:#e2e8f0;">₩{trend_slope:+,.0f} / 월</b> (최근 12개월 평균)
+    • <b style="color:#fbbf24;">노란 점선</b> = 앙상블 예측값 &nbsp;·&nbsp;
+      <b style="color:#fbbf24;">노란 음영</b> = 신뢰구간 (CV RMSE 기반 ±{ci_pct*100:.1f}%)<br>
+    • <b style="color:#e2e8f0;">R²</b> = 1에 가까울수록 예측이 실제값을 잘 설명함 (1.0 = 완벽)<br>
+    • <b style="color:#e2e8f0;">RMSE</b> = 예측 오차의 평균 크기 (단위: 원)<br>
+    • 월평균 기울기: <b style="color:#e2e8f0;">₩{trend_slope_disp:+,.0f} / 월</b>
   </div>
 </div>
 """, unsafe_allow_html=True)
