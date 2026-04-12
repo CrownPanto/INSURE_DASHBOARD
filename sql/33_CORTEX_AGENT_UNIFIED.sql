@@ -61,10 +61,17 @@ EXECUTE AS CALLER
 AS
 $$
 DECLARE
-    v_result VARCHAR DEFAULT '';
-    v_prompt VARCHAR;
-    v_sql VARCHAR;
+    v_result    VARCHAR DEFAULT '';
+    v_prompt    VARCHAR;
+    v_sql       VARCHAR;
+    v_safe_query VARCHAR;
 BEGIN
+    -- ── 입력 검증 (v1.1) ─────────────────────────────────────
+    v_safe_query := LEFT(TRIM(COALESCE(:QUERY, '')), 500);
+    IF (LENGTH(v_safe_query) = 0) THEN
+        RETURN '질문을 입력해 주세요. 예: "강남구 평균 보험료는 얼마인가요?"';
+    END IF;
+
     -- LLM에게 자연어 -> SQL 변환 요청
     v_prompt :=
         'You are a SQL expert for insurance data. Convert the following Korean question to a Snowflake SQL query.\n' ||
@@ -75,7 +82,7 @@ BEGIN
         '- Return ONLY the SQL query, no explanation\n' ||
         '- Always LIMIT 20\n' ||
         '- Use Korean column aliases\n\n' ||
-        'Question: ' || :QUERY || '\n\nSQL:';
+        'Question: ' || v_safe_query || '\n\nSQL:';
 
     v_sql := SNOWFLAKE.CORTEX.COMPLETE('mistral-large2', v_prompt);
 
@@ -169,35 +176,42 @@ EXECUTE AS CALLER
 AS
 $$
 DECLARE
-    v_intent VARCHAR;
-    v_rag_result VARCHAR;
+    v_intent       VARCHAR;
+    v_rag_result   VARCHAR;
     v_graph_result VARCHAR;
-    v_data_result VARCHAR;
-    v_context VARCHAR DEFAULT '';
+    v_data_result  VARCHAR;
+    v_context      VARCHAR DEFAULT '';
     v_final_prompt VARCHAR;
-    v_response VARCHAR;
+    v_response     VARCHAR;
+    v_safe_query   VARCHAR;
 BEGIN
+    -- ── 입력 검증 (v1.1) ─────────────────────────────────────
+    v_safe_query := LEFT(TRIM(COALESCE(:QUERY, '')), 500);
+    IF (LENGTH(v_safe_query) = 0) THEN
+        RETURN '질문을 입력해 주세요. 예: "강남구 화재 위험도는?", "보장 범위가 어떻게 되나요?"';
+    END IF;
+
     -- 1. 의도 분류
-    v_intent := INSURE_DB.ANALYTICS.FN_CLASSIFY_INTENT(:QUERY);
+    v_intent := INSURE_DB.ANALYTICS.FN_CLASSIFY_INTENT(v_safe_query);
 
     -- 2. 의도별 엔진 호출
     CASE v_intent
         WHEN 'DATA' THEN
-            CALL INSURE_DB.ANALYTICS.SP_QUERY_DATA(:QUERY) INTO v_data_result;
+            CALL INSURE_DB.ANALYTICS.SP_QUERY_DATA(v_safe_query) INTO v_data_result;
             v_context := v_data_result;
 
         WHEN 'POLICY' THEN
-            CALL INSURE_DB.ANALYTICS.SP_ASK_INSURE_ADVISOR(:QUERY) INTO v_rag_result;
+            CALL INSURE_DB.ANALYTICS.SP_ASK_INSURE_ADVISOR(v_safe_query) INTO v_rag_result;
             RETURN v_rag_result;  -- RAG 결과는 이미 LLM 처리됨
 
         WHEN 'GRAPH' THEN
             -- Graph + RAG 결합 (관계 질문은 양쪽 모두 활용)
-            CALL INSURE_DB.ANALYTICS.SP_QUERY_GRAPH(:QUERY) INTO v_graph_result;
-            CALL INSURE_DB.ANALYTICS.SP_ASK_INSURE_ADVISOR(:QUERY) INTO v_rag_result;
+            CALL INSURE_DB.ANALYTICS.SP_QUERY_GRAPH(v_safe_query) INTO v_graph_result;
+            CALL INSURE_DB.ANALYTICS.SP_ASK_INSURE_ADVISOR(v_safe_query) INTO v_rag_result;
             v_context := v_graph_result || '\n\n' || '[RAG Reference]\n' || v_rag_result;
 
         ELSE
-            CALL INSURE_DB.ANALYTICS.SP_ASK_INSURE_ADVISOR(:QUERY) INTO v_rag_result;
+            CALL INSURE_DB.ANALYTICS.SP_ASK_INSURE_ADVISOR(v_safe_query) INTO v_rag_result;
             RETURN v_rag_result;
     END CASE;
 
@@ -207,7 +221,7 @@ BEGIN
         'Based on the following context, answer the user question in Korean.\n' ||
         'Be concise and cite specific data when available.\n\n' ||
         '[Context]\n' || v_context || '\n\n' ||
-        '[Question]\n' || :QUERY || '\n\n' ||
+        '[Question]\n' || v_safe_query || '\n\n' ||
         '[Answer]';
 
     v_response := SNOWFLAKE.CORTEX.COMPLETE('mistral-large2', v_final_prompt);
