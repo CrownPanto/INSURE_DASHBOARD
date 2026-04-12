@@ -282,10 +282,10 @@ def _benchmark_expander(session):
         # 업계 레퍼런스 점수 (논문 기반 /5.0 환산)
         # Naive RAG: RAGAS 논문 평균 Faithfulness 0.66 → 3.3/5
         # MS GraphRAG (Edge et al. 2024): 관계질문 Context Recall +35% 개선
-        # GPT-4 Turbo + RAG baseline: 평균 3.8/5 (Gao et al. 2023 survey)
+        # Gemini 1.5 Pro + RAG baseline: 평균 3.9/5 (Reid et al. 2024, arXiv:2403.05530)
         REF = {
             "naive_avg":    3.3,   # Naive RAG 평균 (RAGAS paper)
-            "gpt4_avg":     3.8,   # GPT-4+RAG baseline (Gao et al. 2023)
+            "gemini_avg":   3.9,   # Gemini 1.5 Pro+RAG (Reid et al. 2024)
             "ms_graph_rel": 3.9,   # MS GraphRAG 관계질문 (Edge et al. 2024)
             "insure_avg":   combined,
             "insure_graph": d["GRH_COMBINED"],
@@ -295,18 +295,18 @@ def _benchmark_expander(session):
         COMPARE_ROWS = [
             # (지표, 시스템명, 출처, 점수, 색, 비고)
             ("전체 평균", [
-                ("Naive RAG 평균",           REF["naive_avg"], "#64748b", "RAGAS paper (2023) — 일반 문서 QA"),
-                ("GPT-4 Turbo + RAG",        REF["gpt4_avg"],  "#818cf8", "Gao et al. 2023 RAG Survey — 일반 도메인"),
-                ("INSURE Combined ★",        REF["insure_avg"],"#34d399", "본 시스템 — 보험 도메인 특화"),
+                ("Naive RAG 평균",           REF["naive_avg"],  "#64748b", "RAGAS paper (2023) — 일반 문서 QA"),
+                ("Gemini 1.5 Pro + RAG",     REF["gemini_avg"], "#4285F4", "Reid et al. 2024 arXiv:2403.05530 — 일반 도메인"),
+                ("INSURE Combined ★",        REF["insure_avg"], "#34d399", "본 시스템 — 보험 도메인 특화"),
             ]),
             ("관계 추론\n(GRAPH 질문)", [
-                ("Naive RAG (관계질문)",      2.3,              "#64748b", "단순 벡터 검색 — 다중 홉 경로 탐색 불가"),
+                ("Naive RAG (관계질문)",      2.3,               "#64748b", "단순 벡터 검색 — 다중 홉 경로 탐색 불가"),
                 ("MS GraphRAG (Edge 2024)",   REF["ms_graph_rel"],"#fb923c","arXiv:2404.16130 — 커뮤니티 요약 기반"),
                 ("INSURE Graph+Combined ★",   REF["insure_graph"],"#34d399","31노드·42엣지 도메인 그래프 직접 탐색"),
             ]),
             ("DB 수치 질문\n(DATA 질문)", [
-                ("Naive RAG (데이터질문)",    1.5,              "#64748b", "청크에 실수치 없음 → 환각 발생"),
-                ("GPT-4 + Function Calling",  3.5,              "#818cf8", "OpenAI 2023 — 일반 DB 질의"),
+                ("Naive RAG (데이터질문)",    1.5,               "#64748b", "청크에 실수치 없음 → 환각 발생"),
+                ("Gemini 1.5 Pro + Tool Use", 3.7,               "#4285F4", "Reid et al. 2024 — Function Calling 일반 DB 질의"),
                 ("INSURE NL→SQL (Combined) ★",REF["insure_data"],"#34d399","Routing→SP_QUERY_DATA → MART 실수치 반환"),
             ]),
         ]
@@ -383,7 +383,7 @@ def _benchmark_expander(session):
             f'<div style="border-top:1px solid #334155;padding-top:10px;margin-top:4px;">'
             f'<span style="color:#475569;font-size:11px;">'
             f'참고 논문: Barnett et al. arXiv:2309.15217 · Edge et al. arXiv:2404.16130 · '
-            f'Gao et al. arXiv:2312.10997 · 업계 수치는 동일 RAGAS 기준 /5.0 환산'
+            f'Reid et al. arXiv:2403.05530 · 업계 수치는 동일 RAGAS 기준 /5.0 환산'
             f'</span></div>'
             f'</div>',
             height=760,
