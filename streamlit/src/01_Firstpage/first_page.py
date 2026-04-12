@@ -22,8 +22,18 @@ def _section_header(icon, title, caption="", color="#6366f1", bg="#eef2ff", text
     """, unsafe_allow_html=True)
 
 def show_page(session, selected_ym):
-    st.title("서울시 동산보험료 지도")
-    st.caption("25개 자치구별 위험도 기반 보험료 한눈에 보기")
+    st.markdown("""
+        <div style="background:#1e293b; border-bottom:2px solid #334155;
+                    padding:18px 24px 14px 24px; margin-bottom:8px; border-radius:0 0 10px 10px;">
+            <div style="color:#f1f5f9; font-size:1.5rem; font-weight:800;
+                        letter-spacing:-0.5px; line-height:1.2;">
+                🏙️ 서울시 동산보험료 지도
+            </div>
+            <div style="color:#94a3b8; font-size:0.82rem; margin-top:4px;">
+                25개 자치구별 위험도 기반 보험료 한눈에 보기
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
     # ─── 1. 데이터 로드 및 is_demo 자동 판별 ───
     try:
@@ -34,7 +44,22 @@ def show_page(session, selected_ym):
     except:
         df_main = utils._demo_district_data()
         is_demo = True
-        st.caption("⚠️ Demo Mode — Sample Data")
+        st.markdown("""
+            <div style="background:#fefce8; border:1.5px solid #fbbf24;
+                        border-left:5px solid #f59e0b; border-radius:8px;
+                        padding:10px 16px; margin-bottom:8px;
+                        display:flex; align-items:center; gap:10px;">
+                <span style="font-size:1.1rem;">⚠️</span>
+                <div>
+                    <span style="color:#92400e; font-size:0.85rem; font-weight:700;">
+                        Demo Mode
+                    </span>
+                    <span style="color:#78350f; font-size:0.82rem; margin-left:6px;">
+                        — Snowflake 세션 미연결 상태입니다. 구축된 INSURE_DB 대신 로컬 샘플 데이터로 표시 중
+                    </span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
     # [핵심] DB 데이터에 리스크 점수가 비어있을 경우 utils 데이터로 보충 (기능 유지 ㅡㅡ+)
     _risk_cols = ["FIRE_RISK_SCORE", "THEFT_RISK_SCORE", "BUILDING_RISK_SCORE", "WEATHER_RISK_SCORE", "COMPOSITE_RISK_SCORE"]

@@ -574,27 +574,80 @@ def show_page(session, selected_ym):
             df_trend["YEAR_MONTH"].astype(str).str[4:6]
         )
 
-        # ── 예측: 실데이터 마지막 월 다음부터 24개월 동적 생성 ──
-        if len(df_trend) >= 12:
-            last_12     = df_trend["AVG_PREMIUM"].tail(12).values
-            trend_slope = (last_12[-1] - last_12[0]) / 12
-            last_ym     = df_trend["YEAR_MONTH"].iloc[-1]          # e.g. "2025-12"
-            yr, mo      = int(last_ym[:4]), int(last_ym[5:])
-            forecast_ym = []
-            for _ in range(24):
-                mo += 1
-                if mo > 12: mo, yr = 1, yr + 1
-                forecast_ym.append(f"{yr:04d}-{mo:02d}")
-            forecast_vals = [df_trend["AVG_PREMIUM"].iloc[-1] + trend_slope*(i+1)
-                             for i in range(24)]
+        # ── 앙상블 예측: GradientBoosting + Linear Ridge ───────────────
+        import warnings; warnings.filterwarnings("ignore")
+        try:
+            from sklearn.ensemble import GradientBoostingRegressor
+            from sklearn.linear_model import Ridge
+            from sklearn.model_selection import TimeSeriesSplit
+            from sklearn.metrics import mean_squared_error, r2_score
+            _sklearn_ok = True
+        except ImportError:
+            _sklearn_ok = False
+
+        # 피처 생성: 트렌드 인덱스 + 계절성(sin/cos)
+        def _make_features(length, first_month_num):
+            idx  = np.arange(length, dtype=float)
+            mo   = np.array([(first_month_num + i - 1) % 12 + 1 for i in range(length)])
+            sin_ = np.sin(2 * np.pi * mo / 12)
+            cos_ = np.cos(2 * np.pi * mo / 12)
+            return np.column_stack([idx, idx**2, sin_, cos_])
+
+        y_all      = df_trend["AVG_PREMIUM"].values.astype(float)
+        n_obs      = len(y_all)
+        start_mo   = int(df_trend["YEAR_MONTH"].iloc[0][5:])
+        X_all      = _make_features(n_obs, start_mo)
+        X_future_f = _make_features(n_obs + 24, start_mo)[n_obs:]
+
+        # 마지막 월 다음 24개월 레이블
+        last_ym = df_trend["YEAR_MONTH"].iloc[-1]
+        yr, mo  = int(last_ym[:4]), int(last_ym[5:])
+        forecast_ym = []
+        for _ in range(24):
+            mo += 1
+            if mo > 12: mo, yr = 1, yr + 1
+            forecast_ym.append(f"{yr:04d}-{mo:02d}")
+
+        cv_results = {}
+        if _sklearn_ok and n_obs >= 24:
+            tscv      = TimeSeriesSplit(n_splits=5)
+            ridge     = Ridge(alpha=1.0)
+            gbm       = GradientBoostingRegressor(
+                            n_estimators=300, max_depth=3,
+                            learning_rate=0.05, subsample=0.8,
+                            random_state=42)
+            for label, mdl in [("Ridge (선형)", ridge), ("Gradient Boosting", gbm)]:
+                rmses, r2s = [], []
+                for tr, val in tscv.split(X_all):
+                    mdl.fit(X_all[tr], y_all[tr])
+                    p = mdl.predict(X_all[val])
+                    rmses.append(np.sqrt(mean_squared_error(y_all[val], p)))
+                    r2s.append(r2_score(y_all[val], p))
+                cv_results[label] = {"RMSE": float(np.mean(rmses)), "R2": float(np.mean(r2s))}
+            # 전체 데이터로 최종 학습 후 앙상블 예측 (GBM 60% + Ridge 40%)
+            ridge.fit(X_all, y_all); gbm.fit(X_all, y_all)
+            forecast_vals = (0.6 * gbm.predict(X_future_f) +
+                             0.4 * ridge.predict(X_future_f)).tolist()
+            model_label   = "GBM + Ridge 앙상블"
         else:
-            forecast_ym, forecast_vals = [], []
+            # sklearn 없으면 선형 fallback
+            last_12     = y_all[-12:]
+            trend_slope = (last_12[-1] - last_12[0]) / 12
+            forecast_vals = [y_all[-1] + trend_slope*(i+1) for i in range(24)]
+            model_label   = "Linear Trend (fallback)"
+
+        # 신뢰구간: 앙상블 CV RMSE 기반 (없으면 ±8%)
+        if cv_results.get("Gradient Boosting"):
+            ci_pct = cv_results["Gradient Boosting"]["RMSE"] / np.mean(y_all)
+        else:
+            ci_pct = 0.08
+        trend_slope_disp = (forecast_vals[-1] - y_all[-1]) / 24  # 표시용 평균 기울기
 
         if forecast_vals:
-            delta    = forecast_vals[-1] - df_trend["AVG_PREMIUM"].iloc[-1]
-            d_col    = RED if delta > 0 else GREEN
-            d_icon   = "▲" if delta > 0 else "▼"
-            d_pct    = abs(delta / df_trend["AVG_PREMIUM"].iloc[-1] * 100)
+            delta     = forecast_vals[-1] - y_all[-1]
+            d_col     = RED if delta > 0 else GREEN
+            d_icon    = "▲" if delta > 0 else "▼"
+            d_pct     = abs(delta / y_all[-1] * 100)
             end_label = forecast_ym[-1] if forecast_ym else "2027-12"
             st.markdown(f"""
             <div style="background:linear-gradient(90deg,{INDIGO}18,{INDIGO}06);
@@ -609,8 +662,8 @@ def show_page(session, selected_ym):
 
         fig_trend = go.Figure()
         if forecast_ym:
-            ci_upper = [v*1.08 for v in forecast_vals]
-            ci_lower = [v*0.92 for v in forecast_vals]
+            ci_upper = [v*(1+ci_pct) for v in forecast_vals]
+            ci_lower = [v*(1-ci_pct) for v in forecast_vals]
             fig_trend.add_trace(go.Scatter(
                 x=forecast_ym+forecast_ym[::-1], y=ci_upper+ci_lower[::-1],
                 fill='toself', fillcolor="rgba(251,191,36,0.1)",
