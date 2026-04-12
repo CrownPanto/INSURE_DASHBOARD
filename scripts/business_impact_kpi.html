@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>INSURE — 비즈니스 임팩트 KPI</title>
+  <style>
+    :root {
+      --bg:       #0a0a1a;
+      --surface:  #111128;
+      --border:   rgba(255,255,255,.08);
+      --primary:  #29B5E8;
+      --green:    #50C878;
+      --red:      #E74C3C;
+      --amber:    #FF8C42;
+      --muted:    rgba(255,255,255,.45);
+      --text:     #e0e0e0;
+      --mono:     'JetBrains Mono', 'Consolas', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 48px 32px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      border-left: 4px solid var(--primary);
+      padding-left: 20px;
+      margin-bottom: 48px;
+    }
+    .header .brand {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--primary);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .header .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ===== SECTION ===== */
+    .section {
+      margin-bottom: 48px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-family: var(--mono);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ===== EXEC SUMMARY CARDS ===== */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 0;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .kpi-card.blue::before  { background: var(--primary); }
+    .kpi-card.green::before { background: var(--green); }
+    .kpi-card.amber::before { background: var(--amber); }
+    .kpi-card .kpi-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .kpi-card .kpi-value {
+      font-family: var(--mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .kpi-card .kpi-value.blue  { color: var(--primary); }
+    .kpi-card .kpi-value.green { color: var(--green); }
+    .kpi-card .kpi-value.amber { color: var(--amber); }
+    .kpi-card .kpi-desc {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ===== TAM/SAM/SOM ===== */
+    .tam-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .tam-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 16px;
+      text-align: center;
+    }
+    .tam-card .tam-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .tam-card .tam-value {
+      font-family: var(--mono);
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .tam-card .tam-basis {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .tam-card .tam-source {
+      font-size: 10px;
+      color: var(--primary);
+      margin-top: 8px;
+      font-family: var(--mono);
+    }
+    .note-box {
+      background: rgba(41,181,232,.08);
+      border: 1px solid rgba(41,181,232,.2);
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 16px;
+    }
+    .note-box strong { color: var(--primary); }
+
+    /* ===== KPI TABLES ===== */
+    .stakeholder-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .stakeholder-header {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .stakeholder-header .sh-icon {
+      font-size: 20px;
+    }
+    .stakeholder-header .sh-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .stakeholder-header .sh-tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-left: auto;
+    }
+    .sh-tag.insurer  { background: rgba(41,181,232,.15); color: var(--primary); }
+    .sh-tag.consumer { background: rgba(80,200,120,.15); color: var(--green); }
+    .sh-tag.market   { background: rgba(255,140,66,.15);  color: var(--amber); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead th {
+      padding: 10px 20px;
+      text-align: left;
+      font-size: 11px;
+      font-family: var(--mono);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: rgba(255,255,255,.02);
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      vertical-align: middle;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,.025); }
+    .td-before { color: var(--red); font-family: var(--mono); font-size: 12px; }
+    .td-after  { color: var(--green); font-family: var(--mono); font-size: 12px; font-weight: 600; }
+    .td-basis  { color: var(--muted); font-size: 11px; font-family: var(--mono); }
+    .td-kpi    { color: #fff; font-weight: 500; }
+
+    /* ===== COMPARISON BAR ===== */
+    .compare-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-row:last-child { border-bottom: none; }
+    .compare-label { width: 160px; font-size: 13px; color: var(--text); flex-shrink: 0; }
+    .compare-bars { flex: 1; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .bar-row:last-child { margin-bottom: 0; }
+    .bar-tag { font-family: var(--mono); font-size: 10px; width: 48px; flex-shrink: 0; }
+    .bar-tag.kor { color: var(--red); }
+    .bar-tag.jpn { color: var(--green); }
+    .bar-fill {
+      height: 14px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      padding-left: 8px;
+      font-size: 10px;
+      font-family: var(--mono);
+      color: #fff;
+      font-weight: 600;
+    }
+    .bar-fill.kor { background: var(--red); }
+    .bar-fill.jpn { background: var(--green); }
+
+    /* ===== SCRIPT OPTIONS ===== */
+    .script-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .script-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .script-card .opt-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .opt-label.a { color: var(--primary); }
+    .opt-label.b { color: var(--amber); }
+    .opt-label.c { color: var(--green); }
+    .script-card blockquote {
+      border-left: 3px solid var(--border);
+      padding-left: 12px;
+      font-style: italic;
+      font-size: 13px;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .script-card .when { font-size: 11px; color: var(--muted); }
+
+    .recommend-box {
+      background: var(--surface);
+      border: 1px solid rgba(80,200,120,.25);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .recommend-box .rec-title {
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--green);
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    .rec-steps { list-style: none; padding: 0; }
+    .rec-steps li {
+      padding: 6px 0;
+      font-size: 13px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .rec-steps li .step-num {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--green);
+      background: rgba(80,200,120,.12);
+      border-radius: 4px;
+      padding: 2px 7px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* ===== SOURCES ===== */
+    .source-table { width: 100%; }
+    .source-table th {
+      text-align: left;
+      padding: 8px 16px;
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .source-table td {
+      padding: 10px 16px;
+      font-size: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      vertical-align: top;
+    }
+    .source-table tr:last-child td { border-bottom: none; }
+    .source-table a { color: var(--primary); text-decoration: none; }
+    .source-table a:hover { text-decoration: underline; }
+    .tag-est {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: rgba(255,140,66,.15);
+      color: var(--amber);
+      margin-left: 6px;
+    }
+    .tag-src {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: rgba(80,200,120,.12);
+      color: var(--green);
+      margin-left: 6px;
+    }
+
+    /* ===== FOOTER ===== */
+    .footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <div class="brand">Team CrownPanto · Snowflake Hackathon 2026</div>
+  <h1>비즈니스 임팩트 KPI</h1>
+  <div class="subtitle">실측 시장 데이터 기반 — 3 Stakeholder × KPI 축 | 작성일 2026-04-12</div>
+</div>
+
+<!-- ===== EXECUTIVE SUMMARY ===== -->
+<div class="section">
+  <div class="section-title">Executive Summary</div>
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-label">잠재 시장 규모 (서울)</div>
+      <div class="kpi-value blue">₩5,620억</div>
+      <div class="kpi-desc">서울 미가입 281만 가구 × ₩200,000/년<br><span style="font-size:11px;color:#29B5E8;">통계청 2023 · 한국화재보험협회 2024</span></div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">요율 세분화 배수</div>
+      <div class="kpi-value green">1,500×</div>
+      <div class="kpi-desc">기존 단일 요율 대비<br>10세그먼트 × 25구 × 6자산 카테고리</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">AI 상담 비용 절감</div>
+      <div class="kpi-value amber">99%</div>
+      <div class="kpi-desc">콜센터 ₩5,000/건 → RAG ₩50/건<br>24시간 무중단 서비스</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TAM/SAM/SOM ===== -->
+<div class="section">
+  <div class="section-title">시장 규모 — TAM / SAM / SOM</div>
+  <div class="tam-grid">
+    <div class="tam-card">
+      <div class="tam-label">TAM · 서울</div>
+      <div class="tam-value" style="color:var(--primary);">₩8,280억</div>
+      <div class="tam-basis">서울 414만 가구<br>× ₩200,000/년</div>
+      <div class="tam-source">통계청 2023</div>
+    </div>
+    <div class="tam-card">
+      <div class="tam-label">SAM · 미가입</div>
+      <div class="tam-value" style="color:var(--amber);">₩5,620억</div>
+      <div class="tam-basis">미가입 68% = 281만 가구<br>× ₩200,000/년</div>
+      <div class="tam-source">화재보험협회 2024 <span class="tag-src">실측</span></div>
+    </div>
+    <div class="tam-card">
+      <div class="tam-label">SOM · Phase 1</div>
+      <div class="tam-value" style="color:var(--green);">₩56억</div>
+      <div class="tam-basis">SAM의 1% 점유<br>서비스 론칭 목표</div>
+      <div class="tam-source"><span class="tag-est">추정</span></div>
+    </div>
+    <div class="tam-card">
+      <div class="tam-label">TAM · 전국 확장</div>
+      <div class="tam-value" style="color:#9b8ff5;">₩4.5조</div>
+      <div class="tam-basis">전국 2,273만 가구<br>× ₩200,000/년</div>
+      <div class="tam-source">통계청 2023</div>
+    </div>
+  </div>
+  <div class="note-box">
+    <strong>보험료 기준 근거</strong> — 뱅크샐러드(2025) 실측: 아파트 기본형 월 ₩10,800~12,600원, 종합형 월 ₩22,000~30,000원.
+    중간값 ₩17,000/월 ≈ <strong>₩200,000/년</strong> 사용. 이전 피치의 ₩30,000/월(₩360,000/년)은 상한 시나리오.
+    현재 수치는 보수적 추정 기준.
+  </div>
+</div>
+
+<!-- ===== STAKEHOLDER 1: 보험사 ===== -->
+<div class="section">
+  <div class="section-title">Stakeholder KPI — 3개 이해관계자</div>
+
+  <div class="stakeholder-card">
+    <div class="stakeholder-header">
+      <span class="sh-icon">🏢</span>
+      <span class="sh-title">보험사</span>
+      <span class="sh-tag insurer">INSURER</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:22%">KPI</th>
+          <th style="width:22%">Before</th>
+          <th style="width:22%">After (INSURE)</th>
+          <th>근거</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="td-kpi">상품 개발 기간</td>
+          <td class="td-before">6개월</td>
+          <td class="td-after">2주</td>
+          <td class="td-basis">Plug &amp; Play 요율 엔진 — API 연동만으로 즉시 서비스</td>
+        </tr>
+        <tr>
+          <td class="td-kpi">요율 세분화</td>
+          <td class="td-before">1개 (단일 요율)</td>
+          <td class="td-after">1,500개</td>
+          <td class="td-basis">10세그먼트 × 25구 × 6자산 카테고리</td>
+        </tr>
+        <tr>
+          <td class="td-kpi">데이터 연동 비용</td>
+          <td class="td-before">ETL 구축 수개월</td>
+          <td class="td-after">즉시 (Data Sharing)</td>
+          <td class="td-basis">Snowflake Marketplace — 별도 ETL 없음</td>
+        </tr>
+        <tr>
+          <td class="td-kpi">손해율 관리</td>
+          <td class="td-before">측정 불가</td>
+          <td class="td-after">역선택 방지 설계</td>
+          <td class="td-basis">고위험 구(강남/마포 등) 요율 자동 분리</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== STAKEHOLDER 2: 소비자 ===== -->
+  <div class="stakeholder-card">
+    <div class="stakeholder-header">
+      <span class="sh-icon">👤</span>
+      <span class="sh-title">소비자</span>
+      <span class="sh-tag consumer">CONSUMER</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:22%">KPI</th>
+          <th style="width:22%">Before</th>
+          <th style="width:22%">After (INSURE)</th>
+          <th>근거</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="td-kpi">보험료 투명성</td>
+          <td class="td-before">0단계 (블랙박스)</td>
+          <td class="td-after">7단계 워터폴</td>
+          <td class="td-basis">calc_premium() — Pure→Experience→Risk→Loading→Credibility→Segment→Cap</td>
+        </tr>
+        <tr>
+          <td class="td-kpi">AI 상담 가용성</td>
+          <td class="td-before">9~18시 콜센터</td>
+          <td class="td-after">24시간 RAG 챗봇</td>
+          <td class="td-basis">SP_INSURE_ADVISOR — 367청크 벡터 검색 + Cortex LLM</td>
+        </tr>
+        <tr>
+          <td class="td-kpi">개인화 수준</td>
+          <td class="td-before">1가지 요율</td>
+          <td class="td-after">1,500가지 조합</td>
+          <td class="td-basis">10개 페르소나 × 25개 구 × 6개 자산 세그먼트 매트릭스</td>
+        </tr>
+        <tr>
+          <td class="td-kpi">과대 보험료 방지</td>
+          <td class="td-before">불가</td>
+          <td class="td-after">저위험 구 최대 15% 절감</td>
+          <td class="td-basis">구별 위험도 차등 — 평균 리스크 19.8 / 고위험 구 대비 차등 적용</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== STAKEHOLDER 3: 시장 ===== -->
+  <div class="stakeholder-card">
+    <div class="stakeholder-header">
+      <span class="sh-icon">📊</span>
+      <span class="sh-title">시장 성장 잠재력</span>
+      <span class="sh-tag market">MARKET</span>
+    </div>
+    <div class="compare-row">
+      <div class="compare-label">주택보험 가입률<br><span style="font-size:11px;color:var(--muted);">한국화재보험협회 2024</span></div>
+      <div class="compare-bars">
+        <div class="bar-row">
+          <span class="bar-tag kor">한국</span>
+          <div class="bar-fill kor" style="width:31%;">31%</div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-tag jpn">일본</span>
+          <div class="bar-fill jpn" style="width:82%;">82%</div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:20px 20px 0;">
+      <table>
+        <thead>
+          <tr>
+            <th>지표</th>
+            <th>수치</th>
+            <th>시사점</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-kpi">한국 미가입 가구 (전국)</td>
+            <td class="td-before">약 1,546만 가구 (68%)</td>
+            <td class="td-basis">손해보험 개인가입률 89.5% 대비 주택재물 극히 낮음</td>
+          </tr>
+          <tr>
+            <td class="td-kpi">전국 손해보험 시장</td>
+            <td class="td-after">₩130.8조 (2024)</td>
+            <td class="td-basis">Korean Re — 가재보험은 General P&amp;C 15.8조 내 포함</td>
+          </tr>
+          <tr>
+            <td class="td-kpi">일본 대비 가입률 갭</td>
+            <td style="color:var(--amber);font-family:var(--mono);font-size:12px;">82% - 31% = 51%p</td>
+            <td class="td-basis">가입률이 일본 수준으로만 올라도 시장 2.6배 확대</td>
+          </tr>
+          <tr>
+            <td class="td-kpi">한국 평균 보험료</td>
+            <td class="td-before">₩10,000/건 (2018)</td>
+            <td class="td-basis">일본 ₩430,000 대비 43분의 1 — 보장 수준 개선 여지 큼</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:16px 20px;">
+      <div class="note-box" style="margin-top:0;">
+        <strong>투명성 전략</strong> — 가입률·시장규모 수치는 공개 출처 기반이나 가재보험 단독 통계는 미공개.
+        "동산보험 가입률이 낮아 성장 잠재력이 크다"는 논리의 방어 근거로 활용.
+        단, 슬라이드 발표 시 "추정" 명기 권장.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PITCH SCRIPT ===== -->
+<div class="section">
+  <div class="section-title">발표 대본 옵션</div>
+
+  <div class="script-grid">
+    <div class="script-card">
+      <div class="opt-label a">Option A — Before/After 강조형</div>
+      <blockquote>
+        "기존 보험사는 상품 하나 만드는 데 6개월이 걸립니다.<br>
+        INSURE는 2주입니다.<br>
+        그리고 요율은 단일 1개에서 1,500개로 늘어납니다."
+      </blockquote>
+      <div class="when">적합: 보험사 임원, 기술 심사위원</div>
+    </div>
+    <div class="script-card">
+      <div class="opt-label b">Option B — 시장 규모 강조형</div>
+      <blockquote>
+        "서울시 동산보험 잠재 시장은 연 5,620억원입니다.<br>
+        현재 가입률은 31%에 불과합니다.<br>
+        일본은 82%입니다."
+      </blockquote>
+      <div class="when">적합: VC Judge, 투자자</div>
+    </div>
+    <div class="script-card">
+      <div class="opt-label c">Option C — ROI 계산 강조형</div>
+      <blockquote>
+        "콜센터 상담 1건 비용 ₩5,000.<br>
+        INSURE RAG 답변 1건 비용 ₩50.<br>
+        99% 절감입니다. 24시간입니다."
+      </blockquote>
+      <div class="when">적합: 효율성·비용 중심 심사위원</div>
+    </div>
+  </div>
+
+  <div class="recommend-box">
+    <div class="rec-title">추천 조합 순서 (VC Judge 기준)</div>
+    <ul class="rec-steps">
+      <li>
+        <span class="step-num">①</span>
+        <span><strong style="color:var(--amber);">Option B로 시작</strong> — "서울 동산보험 잠재 시장 5,620억, 가입률 31% vs 일본 82%"로 VC의 관심 잡기</span>
+      </li>
+      <li>
+        <span class="step-num">②</span>
+        <span><strong style="color:var(--primary);">Option A로 구체화</strong> — "6개월 → 2주, 1개 요율 → 1,500개"로 보험사 설득 논리 제시</span>
+      </li>
+      <li>
+        <span class="step-num">③</span>
+        <span><strong style="color:var(--green);">Option C로 마무리</strong> — "₩5,000 → ₩50, 99% 절감"으로 ROI 확신 제공</span>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== SOURCES ===== -->
+<div class="section">
+  <div class="section-title">데이터 출처</div>
+  <table class="source-table">
+    <thead>
+      <tr>
+        <th style="width:30%">수치</th>
+        <th style="width:15%">값</th>
+        <th style="width:15%">연도</th>
+        <th>출처</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>서울시 총 가구 수</td>
+        <td style="font-family:var(--mono);">414만</td>
+        <td>2023</td>
+        <td><a href="https://data.seoul.go.kr/dataList/10586/S/2/datasetView.do" target="_blank">서울 열린데이터광장 / 통계청 인구주택총조사</a> <span class="tag-src">실측</span></td>
+      </tr>
+      <tr>
+        <td>전국 총 가구 수</td>
+        <td style="font-family:var(--mono);">2,273만</td>
+        <td>2023</td>
+        <td><a href="https://kostat.go.kr/board.es?mid=a10301010000&bid=10820&act=view&list_no=430089" target="_blank">통계청 인구주택총조사</a> <span class="tag-src">실측</span></td>
+      </tr>
+      <tr>
+        <td>한국 주택화재보험 가입률</td>
+        <td style="font-family:var(--mono);">~30~32%</td>
+        <td>2018 / 2024</td>
+        <td><a href="https://www.kfpa.or.kr/webzine/202404/other_information2.html" target="_blank">한국화재보험협회 웹진 107호 (2024)</a> · <a href="https://www.kfpa.or.kr/webzine/201809/sub/insurance2.html" target="_blank">84호 (2018)</a> <span class="tag-src">실측</span></td>
+      </tr>
+      <tr>
+        <td>일본 주택보험 가입률</td>
+        <td style="font-family:var(--mono);">~82%</td>
+        <td>2018</td>
+        <td><a href="https://www.kfpa.or.kr/webzine/201809/sub/insurance2.html" target="_blank">한국화재보험협회 웹진 84호 인용</a> <span class="tag-est">2차 인용</span></td>
+      </tr>
+      <tr>
+        <td>전체 손해보험 원수보험료</td>
+        <td style="font-family:var(--mono);">130.8조</td>
+        <td>2024</td>
+        <td><a href="https://eng.koreanre.co.kr/webzine/Bulletin_193/bull2.html" target="_blank">Korean Re Market Bulletin 193호</a> <span class="tag-src">실측</span></td>
+      </tr>
+      <tr>
+        <td>아파트 화재보험 월 보험료</td>
+        <td style="font-family:var(--mono);">₩10,800~30,000</td>
+        <td>2025</td>
+        <td><a href="https://www.banksalad.com/articles/%ED%99%94%EC%9E%AC%EB%B3%B4%ED%97%98-%EB%B9%84%EA%B5%90-%EC%95%84%ED%8C%8C%ED%8A%B8%ED%99%94%EC%9E%AC%EB%B3%B4%ED%97%98-%EA%B0%80%EA%B2%A9-%EB%B3%B4%EC%83%81%EB%B2%94%EC%9C%84-%EB%88%84%EC%88%98-%EC%9D%98%EB%AC%B4%EA%B0%80%EC%9E%85-%EA%B0%80%EC%9E%85%EC%9A%94%EB%A0%B9" target="_blank">뱅크샐러드 화재보험 비교</a> <span class="tag-src">실측</span></td>
+      </tr>
+      <tr>
+        <td>TAM/SAM/SOM 계산값</td>
+        <td style="font-family:var(--mono);">₩8,280억 / ₩5,620억 / ₩56억</td>
+        <td>2026</td>
+        <td>위 실측 데이터 기반 계산 (서울 가구 × ₩200,000/년) <span class="tag-est">추정</span></td>
+      </tr>
+      <tr>
+        <td>콜센터 상담 비용 ₩5,000</td>
+        <td style="font-family:var(--mono);">₩5,000/건</td>
+        <td>—</td>
+        <td>업계 평균 추정 (콜센터 운영비 / 처리 건수 기준) <span class="tag-est">추정</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div class="footer">
+  <span>Team CrownPanto · INSURE, For Sure. · Snowflake Hackathon 2026</span>
+  <span>작성: Claude Code (feature_kijun) · 2026-04-12</span>
+</div>
+
+</body>
+</html>
