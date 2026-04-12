@@ -318,17 +318,17 @@ def show_page(session, selected_ym):
 
         ctrl_cols = st.columns(3)
         with ctrl_cols[0]:
-            st.markdown(f"<div style='color:{TXT2}; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px;'>🏠 가구 유형</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='color:#334155; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px;'>🏠 가구 유형</div>", unsafe_allow_html=True)
             seg_a_key = st.selectbox("가구 유형", list(SEGMENTS_A.keys()),
                                      format_func=lambda k: f"{SEGMENTS_A[k]['icon']} {SEGMENTS_A[k]['name']}",
                                      label_visibility="collapsed")
         with ctrl_cols[1]:
-            st.markdown(f"<div style='color:{TXT2}; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px;'>📦 자산 유형</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='color:#334155; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px;'>📦 자산 유형</div>", unsafe_allow_html=True)
             seg_b_key = st.selectbox("자산 유형", list(SEGMENTS_B.keys()),
                                      format_func=lambda k: f"{SEGMENTS_B[k]['icon']} {SEGMENTS_B[k]['name']}",
                                      label_visibility="collapsed")
         with ctrl_cols[2]:
-            st.markdown(f"<div style='color:{TXT2}; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px;'>💵 연소득 (백만원)</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='color:#334155; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px;'>💵 연소득 (백만원)</div>", unsafe_allow_html=True)
             income = st.slider("연소득 (백만원)", 20, 150, 50, 5, label_visibility="collapsed")
 
         res   = calc_premium(sel_gu, seg_a_key, seg_b_key, income=income, selected_items=["가전제품", "전자기기"])
