@@ -66,12 +66,12 @@
 <div class="container">
 
 <h1>INSURE Streamlit Dashboard Review</h1>
-<p class="subtitle">feature_kijun branch | 2026-04-11 | Andy reference document</p>
+<p class="subtitle">feature_kijun branch | 2026-04-12 | Andy reference document (Andy V1.0 기준)</p>
 
 <!-- Summary -->
 <div class="summary-grid">
   <div class="summary-card info">
-    <div class="number">899</div>
+    <div class="number">864</div>
     <div class="label">Total Lines</div>
   </div>
   <div class="summary-card good">
@@ -79,33 +79,41 @@
     <div class="label">Pages</div>
   </div>
   <div class="summary-card critical">
-    <div class="number">3</div>
+    <div class="number">1</div>
     <div class="label">Critical Issues</div>
   </div>
   <div class="summary-card warning">
-    <div class="number">8</div>
+    <div class="number">5</div>
     <div class="label">Improvements</div>
   </div>
+</div>
+
+<!-- 변경 이력 -->
+<h2>2026-04-12 업데이트 요약</h2>
+<div class="page-card">
+  <table>
+    <tr><th>항목</th><th>이전 (04-11)</th><th>현재 (04-12)</th></tr>
+    <tr><td>connection.py 인증정보 하드코딩</td><td><span class="tag crit">CRITICAL</span> 평문 노출</td><td><span class="tag ok">FIXED</span> st.secrets 전환 완료, 파일 제거</td></tr>
+    <tr><td>calc_premium() DRY 위반</td><td><span class="tag warn">WARNING</span> P2/P4 중복</td><td><span class="tag ok">FIXED</span> utils.py:110 단일 정의</td></tr>
+    <tr><td>골든셋 Q1~Q10</td><td>기술 약관 질문</td><td><span class="tag ok">UPDATED</span> 실생활 자연어 10개로 교체 (35_RAG_BENCHMARK.sql)</td></tr>
+    <tr><td>P2 프리셋 잠김</td><td>4개 중 2개 잠김</td><td><span class="tag warn">PENDING</span> 여전히 강북/송파 잠김</td></tr>
+    <tr><td>P4 빈 탭</td><td>Pricing/Forecasting 빈 placeholder</td><td><span class="tag warn">PENDING</span> Andy 작업 중</td></tr>
+  </table>
 </div>
 
 <!-- ============================================================ -->
 <h2>Page-by-Page Review</h2>
 
 <!-- connection.py -->
-<div class="page-card critical-issues">
+<div class="page-card">
   <div class="page-header">
     <span class="page-name">connection.py</span>
-    <span class="page-lines">25 lines</span>
+    <span class="page-lines">삭제됨</span>
   </div>
-  <div class="page-file">streamlit/connection.py</div>
-  <div class="issue critical">
-    <span class="tag crit">CRITICAL</span>
-    Snowflake credentials (account, user, password) hardcoded in plaintext. Demo/review 시 노출 위험.
-    <br><b>Fix:</b> <span class="code">st.secrets</span> 또는 환경변수로 이동
-  </div>
-  <div class="issue warning">
-    <span class="tag warn">WARNING</span>
-    DB명이 <span class="code">"성혁님_DB명"</span>으로 placeholder 상태 - 실 연결 시 실패
+  <div class="page-file">scripts/connection.py → 제거</div>
+  <div class="issue good">
+    <span class="tag ok">FIXED</span>
+    하드코딩 credentials 제거 완료. <span class="code">st.secrets["connections"]["snowpark"]</span> 방식으로 전환, 파일 삭제됨.
   </div>
 </div>
 
@@ -177,11 +185,9 @@
   <div class="page-file">streamlit/src/02_Secondpage/second_page.py</div>
   <div class="issue warning">
     <span class="tag warn">WARNING</span>
-    4개 프리셋 중 2개가 "업데이트 예정" 잠금 상태 - 심사위원이 클릭하면 미완성 인상. 잠금 해제하거나 UI에서 숨기기 권장
-  </div>
-  <div class="issue suggestion">
-    <span class="tag fix">SUGGEST</span>
-    100+ lines inline CSS - 별도 CSS 파일로 분리하면 유지보수 편함 (데모 전 급한 건 아님)
+    4개 프리셋 중 강북(A6+B3) · 송파(A1+B4) 2개가 여전히 <span class="code">active: False</span> 잠금 상태.
+    심사위원이 클릭하면 "업데이트 예정" 노출.
+    <br><b>Fix:</b> utils.py에서 두 프리셋의 <span class="code">"active": True</span> 로 변경
   </div>
   <div class="issue suggestion">
     <span class="tag fix">SUGGEST</span>
@@ -189,7 +195,8 @@
   </div>
   <div class="issue good">
     <span class="tag ok">OK</span>
-    Risk gauge + donut chart + waterfall chart 조합이 시각적으로 훌륭. 데모 핵심 페이지
+    Risk gauge + donut chart + waterfall chart 조합이 시각적으로 훌륭. 데모 핵심 페이지.
+    <span class="code">calc_premium()</span>이 utils.py 단일 정의로 정리됨.
   </div>
 </div>
 
@@ -251,32 +258,31 @@
 <div class="priority-section">
   <span class="priority-label p0">P0 - Must Fix (Demo Blocker)</span>
   <table>
-    <tr><th>#</th><th>Item</th><th>File</th><th>Effort</th></tr>
-    <tr><td>1</td><td>Page 4 빈 탭 2개 제거 또는 채우기 (미완성 노출 방지)</td><td>04_Fourthpage</td><td>~30min</td></tr>
-    <tr><td>2</td><td>Page 2 잠금 프리셋 2개 숨기거나 해제</td><td>02_Secondpage</td><td>~10min</td></tr>
-    <tr><td>3</td><td>connection.py 비밀번호 제거 (발표 시 화면 노출 위험)</td><td>connection.py</td><td>~10min</td></tr>
+    <tr><th>#</th><th>Item</th><th>File</th><th>Effort</th><th>Status</th></tr>
+    <tr><td>1</td><td>Page 4 빈 탭 2개 제거 또는 채우기 (Pricing/Forecasting placeholder)</td><td>04_Fourthpage</td><td>~30min</td><td><span class="tag warn">Andy 작업 중</span></td></tr>
+    <tr><td>2</td><td>Page 2 잠금 프리셋 2개 해제 (강북 A6+B3, 송파 A1+B4)</td><td>utils.py line 65,69</td><td>~5min</td><td><span class="tag warn">PENDING</span></td></tr>
+    <tr style="opacity:0.4"><td>3</td><td><s>connection.py 비밀번호 제거</s></td><td>connection.py</td><td>-</td><td><span class="tag ok">DONE</span></td></tr>
   </table>
 </div>
 
 <div class="priority-section">
   <span class="priority-label p1">P1 - Should Fix (Quality)</span>
   <table>
-    <tr><th>#</th><th>Item</th><th>File</th><th>Effort</th></tr>
-    <tr><td>4</td><td>Bare except -> except Exception as e 전체 교체</td><td>all files</td><td>~15min</td></tr>
-    <tr><td>5</td><td>Page 3 SP 실패 시 에러 메시지 표시</td><td>03_Thirdpage</td><td>~10min</td></tr>
-    <tr><td>6</td><td>Page 4 radar chart fire 중복 수정</td><td>04_Fourthpage</td><td>~5min</td></tr>
-    <tr><td>7</td><td>Month fallback 현재 월 자동 계산</td><td>main.py</td><td>~5min</td></tr>
+    <tr><th>#</th><th>Item</th><th>File</th><th>Effort</th><th>Status</th></tr>
+    <tr><td>4</td><td>Page 4 radar chart fire 중복 참조 수정 (line 13)</td><td>04_Fourthpage</td><td>~5min</td><td><span class="tag warn">Andy 작업 중</span></td></tr>
+    <tr><td>5</td><td>Page 3 SP 실패 시 에러 원인 표시 (현재 fallback만)</td><td>03_Thirdpage</td><td>~10min</td><td><span class="tag warn">PENDING</span></td></tr>
+    <tr><td>6</td><td>Month fallback "202512" → 현재 월 자동 계산</td><td>main.py</td><td>~5min</td><td><span class="tag warn">PENDING</span></td></tr>
+    <tr style="opacity:0.4"><td>7</td><td><s>calc_premium() DRY 위반 해소</s></td><td>utils.py</td><td>-</td><td><span class="tag ok">DONE</span></td></tr>
   </table>
 </div>
 
 <div class="priority-section">
   <span class="priority-label p2">P2 - Nice to Have (Bonus)</span>
   <table>
-    <tr><th>#</th><th>Item</th><th>File</th><th>Effort</th></tr>
-    <tr><td>8</td><td>Page 1 자치구 비교 selectbox 추가</td><td>01_Firstpage</td><td>~20min</td></tr>
-    <tr><td>9</td><td>Page 5에 Graph RAG 시각화 이미지 삽입</td><td>05_Fifthpage</td><td>~10min</td></tr>
-    <tr><td>10</td><td>Page 3 챗봇에 Graph RAG context 연동</td><td>03_Thirdpage</td><td>~1hr</td></tr>
-    <tr><td>11</td><td>calc_premium() magic constants 주석 추가</td><td>utils.py</td><td>~10min</td></tr>
+    <tr><th>#</th><th>Item</th><th>File</th><th>Effort</th><th>Status</th></tr>
+    <tr><td>8</td><td>Page 1 자치구 비교 selectbox 추가 (현재 영등포/서초 고정)</td><td>01_Firstpage</td><td>~20min</td><td><span class="tag warn">PENDING</span></td></tr>
+    <tr><td>9</td><td>Page 5에 Graph RAG 시각화 이미지 삽입</td><td>05_Fifthpage</td><td>~10min</td><td><span class="tag warn">PENDING</span></td></tr>
+    <tr><td>10</td><td>Page 3 챗봇에 Graph RAG context 연동</td><td>03_Thirdpage</td><td>~1hr</td><td><span class="tag warn">PENDING</span></td></tr>
   </table>
 </div>
 
@@ -305,7 +311,7 @@
 </div>
 
 <div class="footer">
-  Generated by feature_kijun | 2026-04-11 | For Andy's reference only - no Streamlit code was modified
+  Generated by feature_kijun | Updated 2026-04-12 | For Andy's reference only — no Streamlit code was modified directly
 </div>
 
 </div>
