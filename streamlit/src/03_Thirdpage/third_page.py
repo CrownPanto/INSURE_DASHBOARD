@@ -266,8 +266,85 @@ def _benchmark_expander(session):
             height=270
         )
 
-        # ── 3. 발표 멘트 ──────────────────────────────────────
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        # ── 3. 왜 이런 점수가 나왔나요? (초등학생도 이해 가능) ──
+        st.markdown("##### 🤔 왜 이런 점수가 나왔을까요?")
+
+        WHY_CARDS = [
+            {
+                "emoji": "📖",
+                "title": "Plain RAG가 약관 질문(POLICY)엔 잘 하는 이유",
+                "score_label": f"POLICY: {d['POL_PLAIN']:.1f}점",
+                "score_color": "#818cf8",
+                "easy": "Plain RAG는 보험 약관 책 전체를 외운 똑똑한 학생이에요. \"화재 보장 범위가 뭐야?\"처럼 책에 직접 나온 질문엔 책 펼쳐서 바로 답할 수 있어요.",
+                "hard": "하지만 \"화재 위험도가 보험료에 어떻게 연결돼?\"처럼 여러 개념을 이어야 하는 질문엔 약하죠. 책에 그 연결 관계가 적혀있지 않거든요.",
+                "border": "#818cf8",
+            },
+            {
+                "emoji": "🕸️",
+                "title": "Graph RAG가 관계 질문(GRAPH)엔 압도적인 이유",
+                "score_label": f"GRAPH: {d['GRH_GRAPH']:.1f}점 vs Plain {d['GRH_PLAIN']:.1f}점",
+                "score_color": "#fb923c",
+                "easy": "Graph RAG는 지식을 '지하철 노선도'처럼 연결해서 알고 있어요. \"화재위험 → 리스크점수 → 보험료\" 경로를 따라가며 설명할 수 있죠.",
+                "hard": "단, 약관 문장 자체를 외우진 않았어요. \"몇 조에 나와있어?\"처럼 정확한 조항 번호는 잘 모릅니다.",
+                "border": "#fb923c",
+            },
+            {
+                "emoji": "🗄️",
+                "title": "Plain·Graph 둘 다 DATA 질문엔 약한 이유",
+                "score_label": f"DATA: Plain {d['DAT_PLAIN']:.1f}점 / Graph {d['DAT_GRAPH']:.1f}점",
+                "score_color": "#f87171",
+                "easy": "\"강남구 평균 보험료가 얼마야?\"는 숫자를 직접 DB에서 꺼내야 해요. 약관 책이나 지식 지도엔 이 숫자가 없어요.",
+                "hard": "마치 수학 공식은 외웠는데 실제 계산기를 못 쓰는 상황이에요. 숫자 질문엔 SQL이라는 도구가 필요합니다.",
+                "border": "#f87171",
+            },
+            {
+                "emoji": "🦸",
+                "title": "Combined(이중 RAG)가 모든 유형에서 높은 이유",
+                "score_label": f"전체: {d['AVG_COMBINED']:.1f}점 (+{uplift}%)",
+                "score_color": "#34d399",
+                "easy": "Combined는 먼저 \"이 질문이 어떤 종류야?\"를 판단(Routing)해요. 그 다음 약관 질문이면 Plain RAG, 관계 질문이면 Graph RAG, 숫자 질문이면 SQL을 골라 씁니다.",
+                "hard": "마치 만능 스위스 아미 나이프처럼 상황에 맞는 도구를 꺼내 쓰는 거예요. 그래서 어떤 유형의 질문도 4.5점 이상을 낼 수 있습니다.",
+                "border": "#34d399",
+            },
+        ]
+
+        for card in WHY_CARDS:
+            components.html(
+                f'<div style="background:#1e293b;border:1px solid #334155;'
+                f'border-left:4px solid {card["border"]};border-radius:12px;'
+                f'padding:18px 22px;margin-bottom:12px;font-family:sans-serif;">'
+
+                # 헤더
+                f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">'
+                f'<span style="font-size:24px;">{card["emoji"]}</span>'
+                f'<div>'
+                f'<div style="color:#f1f5f9;font-size:14px;font-weight:800;">{card["title"]}</div>'
+                f'<div style="background:{card["score_color"]}22;color:{card["score_color"]};'
+                f'font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;'
+                f'display:inline-block;margin-top:4px;">{card["score_label"]}</div>'
+                f'</div>'
+                f'</div>'
+
+                # 잘하는 이유
+                f'<div style="display:flex;gap:10px;margin-bottom:8px;">'
+                f'<span style="background:#14532d;color:#34d399;font-size:11px;font-weight:800;'
+                f'padding:3px 8px;border-radius:6px;flex-shrink:0;height:fit-content;">잘해요</span>'
+                f'<div style="color:#cbd5e1;font-size:13px;line-height:1.6;">{card["easy"]}</div>'
+                f'</div>'
+
+                # 못하는 이유
+                f'<div style="display:flex;gap:10px;">'
+                f'<span style="background:#450a0a;color:#f87171;font-size:11px;font-weight:800;'
+                f'padding:3px 8px;border-radius:6px;flex-shrink:0;height:fit-content;">한계</span>'
+                f'<div style="color:#94a3b8;font-size:13px;line-height:1.6;">{card["hard"]}</div>'
+                f'</div>'
+
+                f'</div>',
+                height=175
+            )
+
+        # ── 4. 발표 멘트 ──────────────────────────────────────
+        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
         st.markdown(f"""
 > **발표 포인트** — 저희는 RAG를 구현하는 데 그치지 않고 성능을 **검증**했습니다.
 > 20개 골든셋으로 Plain RAG / Graph RAG / Combined 세 방식을 6개 지표로 측정했고,
