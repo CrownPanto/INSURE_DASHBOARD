@@ -842,7 +842,7 @@ def show_page(session, selected_ym):
     <div style="color:#e2e8f0;font-size:13px;font-weight:600;">
       {w_desc} <span style="color:#fbbf24;font-size:11px;">★ 최종 예측</span></div>
     <div style="color:#475569;font-size:10px;margin-top:2px;">
-      TimeSeriesSplit {4 if _stats_ok else 5}-fold · 가중 평균 앙상블</div>
+      TimeSeriesSplit 5-fold · 가중 평균 앙상블 · 순수 numpy 구현</div>
   </div>
   <div style="text-align:right;">
     <div style="color:#64748b;font-size:10px;margin-bottom:2px;">RMSE (가중평균)</div>
