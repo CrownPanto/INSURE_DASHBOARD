@@ -369,6 +369,26 @@ def _benchmark_expander(session):
 
 
 def show_page(session, selected_ym):
+    # 예시 질문 버튼 스타일 오버라이드
+    st.markdown("""
+    <style>
+    div[data-testid="stHorizontalBlock"] div.stButton > button[kind="secondary"] {
+        background-color: #1e293b !important;
+        border: 1.5px solid #818cf8 !important;
+        color: #e2e8f0 !important;
+        border-radius: 10px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        padding: 8px 4px !important;
+    }
+    div[data-testid="stHorizontalBlock"] div.stButton > button[kind="secondary"]:hover {
+        background-color: #312e81 !important;
+        border-color: #a5b4fc !important;
+        color: #ffffff !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     h_l, h_r = st.columns([5, 1])
     with h_l:
         st.title("💬 AI 보험 상담")
