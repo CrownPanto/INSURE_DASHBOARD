@@ -61,7 +61,8 @@ st.sidebar.markdown(f"""<div style="padding: 1rem 0.5rem;"><h1 style="color: whi
 st.sidebar.markdown('<p class="menu-label">Main Menu</p>', unsafe_allow_html=True)
 
 # v3용 메뉴 리스트
-menu_list = ["🗺️ 서울시 보험료 지도", "🎯 맞춤 보험 시뮬레이터", "💬 AI 보험 상담", "⚙️ 엔진 상세", "📊 시스템 현황"]
+# menu_list = ["🗺️ 서울시 보험료 지도", "🎯 맞춤 보험 시뮬레이터", "💬 AI 보험 상담", "⚙️ 엔진 상세", "📊 시스템 현황"]
+menu_list = ["🗺️ 서울시 보험료 지도", "🎯 맞춤 보험 시뮬레이터", "💬 AI 보험 상담", "💰  보험료 산출"]
 
 for menu in menu_list:
     btn_type = "primary" if st.session_state['current_page'] == menu else "secondary"
@@ -92,10 +93,10 @@ elif page == "💬 AI 보험 상담":
     page_module = load_page("streamlit/src/03_Thirdpage/third_page.py")
     page_module.show_page(session, selected_month)
 
-elif page == "⚙️ 엔진 상세":
+elif page == "💰  보험료 산출":
     page_module = load_page("streamlit/src/04_Fourthpage/fourth_page.py")
     page_module.show_page(session, selected_month)
 
-elif page == "📊 시스템 현황":
-    page_module = load_page("streamlit/src/05_Fifthpage/fifth_page.py")
-    page_module.show_page(session, selected_month)
+# elif page == "📊 시스템 현황":
+#     page_module = load_page("streamlit/src/05_Fifthpage/fifth_page.py")
+#     page_module.show_page(session, selected_month)

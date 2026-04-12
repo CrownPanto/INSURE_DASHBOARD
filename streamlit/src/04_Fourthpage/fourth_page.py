@@ -58,20 +58,21 @@ def show_page(session, selected_ym):
         background: transparent !important;
     }}
     div[data-testid="stSlider"] [data-baseweb="slider"] div[role="slider"] {{
-        background: {INDIGO} !important;
-        border: 2px solid #fff !important;
-        box-shadow: 0 0 0 3px {INDIGO}55 !important;
-        width: 20px !important; height: 20px !important;
+        background: #4f46e5 !important;
+        border: 3px solid #fff !important;
+        box-shadow: 0 0 0 3px #4f46e599 !important;
+        width: 22px !important; height: 22px !important;
     }}
     div[data-testid="stSlider"] [data-baseweb="slider"] div[class*="Track"] > div:first-child {{
-        background: {INDIGO} !important;
+        background: #4f46e5 !important;
     }}
     div[data-testid="stSlider"] [data-baseweb="slider"] div[class*="Track"] {{
-        background: {BORDER} !important;
-        height: 4px !important;
+        background: #94a3b8 !important;
+        height: 6px !important;
+        border-radius: 3px !important;
     }}
     div[data-testid="stSlider"] p {{
-        color: {TXT1} !important;
+        color: #1e293b !important;
         font-size: 13px !important;
         font-weight: 700 !important;
     }}
@@ -114,6 +115,7 @@ def show_page(session, selected_ym):
     avg_theft    = np.mean([v["theft"]    for v in DISTRICT_PROFILES.values()])
     avg_building = np.mean([v["building"] for v in DISTRICT_PROFILES.values()])
     avg_weather  = np.mean([v["weather"]  for v in DISTRICT_PROFILES.values()])
+    avg_base     = np.mean([v["base"]     for v in DISTRICT_PROFILES.values()])
 
     # ── KPI 배너 ─────────────────────────────────────────────────
     st.markdown(f"""
@@ -294,11 +296,20 @@ def show_page(session, selected_ym):
             </div>""", unsafe_allow_html=True)
 
         with s3:
+            prem_diff     = p["base"] - avg_base
+            prem_diff_pct = prem_diff / avg_base * 100
+            prem_col      = GREEN if prem_diff < 0 else RED
+            prem_sign     = "▼" if prem_diff < 0 else "▲"
+            prem_label    = "평균보다 저렴" if prem_diff < 0 else "평균보다 비쌈"
             st.markdown(f"""
-            <div style="{stat_style} border-top:3px solid {INDIGO};">
-                <div style="color:#475569; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;">백분위</div>
-                <div style="color:{TXT1}; font-size:22px; font-weight:900;">상위 {100-risk_pct}<span style="color:{TXT3}; font-size:13px;">%</span></div>
-                <div style="color:{TXT3}; font-size:10px; margin-top:4px;">전체 구 대비 위험도 위치</div>
+            <div style="{stat_style} border-top:3px solid {prem_col};">
+                <div style="color:#475569; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;">서울 평균 대비 보험료</div>
+                <div style="color:{prem_col}; font-size:22px; font-weight:900;">{prem_sign} {abs(prem_diff_pct):.1f}<span style="color:{TXT3}; font-size:13px;">%</span></div>
+                <div style="display:flex; flex-direction:column; gap:3px; margin-top:6px;">
+                    <div style="color:{TXT2}; font-size:11px;">현재 <b style="color:{TXT1};">₩{p['base']:,.0f}</b></div>
+                    <div style="color:{TXT3}; font-size:11px;">서울 평균 ₩{avg_base:,.0f}</div>
+                    <div style="color:{prem_col}; font-size:10px; font-weight:700;">{prem_label}</div>
+                </div>
             </div>""", unsafe_allow_html=True)
 
         with s4:
@@ -877,31 +888,30 @@ def show_page(session, selected_ym):
 
         # ── 예측 모델 상세 expander ────────────────────────────────────
         with st.expander("📐 예측 모델 상세 — 모델 비교 & 검증 점수"):
-            # ── 3모델 CV 결과 행 생성
+            # ── 3모델 CV 결과 행 생성 (best_model_name 기반으로 배지 동적 결정)
+            _best = best_model_name  # RMSE 기준 자동 선택된 최우수 모델
             model_meta = [
                 ("Holt-Winters", "시계열",    "#06b6d4",
                  "Triple Exponential Smoothing · SARIMA 동일 계열 · 계절·추세·수준 분리",
-                 cv_results.get("HW"),    False),
+                 cv_results.get("HW"),    _best == "HW"),
                 ("GBM",          "트리부스팅","#fb923c",
                  "Gradient Boosting (Decision Stumps) · XGBoost·LightGBM 동일 원리 · iter=80",
-                 cv_results.get("GBM"),   True),
+                 cv_results.get("GBM"),   _best == "GBM"),
                 ("Ridge",        "선형",      "#818cf8",
                  "Ridge Regression · 트렌드 + 계절성(sin/cos) 피처 · α=10",
-                 cv_results.get("Ridge"), False),
+                 cv_results.get("Ridge"), _best == "Ridge"),
             ]
             cv_rows_html = ""
             for mkey, badge, color, desc, res, selected in model_meta:
-                rmse_str  = f"₩{res['RMSE']:,.0f}" if res else "—"
-                r2_val    = res['R2']    if (res and res.get('R2')    is not None) else None
-                r2_in_val = res['R2_in'] if (res and res.get('R2_in') is not None) else None
+                rmse_str  = f"₩{res['RMSE']:,.0f}" if (res and res.get('RMSE') is not None) else "—"
                 mape_val  = res['MAPE']  if (res and res.get('MAPE')  is not None) else None
-                r2_str    = f"{r2_val:.3f}"    if r2_val    is not None else "—"
-                r2_in_str = f"{r2_in_val:.3f}" if r2_in_val is not None else "—"
                 mape_str  = f"{mape_val:.1f}%" if mape_val  is not None else "—"
-                r2_bar    = max(0, min(1, r2_val))    * 100 if r2_val    is not None else 0
-                r2_in_bar = max(0, min(1, r2_in_val)) * 100 if r2_in_val is not None else 0
-                r2_cv_color  = "#86efac" if (r2_val    is not None and r2_val    >= 0) else "#fca5a5"
-                r2_in_color  = "#86efac" if (r2_in_val is not None and r2_in_val >= 0) else "#fca5a5"
+                # 예측 정확도: 100% - MAPE (직관적, 항상 양수)
+                acc_val   = max(0.0, 100.0 - mape_val) if mape_val is not None else None
+                acc_str   = f"{acc_val:.1f}%" if acc_val is not None else "—"
+                acc_bar   = min(100, max(0, acc_val)) if acc_val is not None else 0
+                acc_color = "#86efac" if (acc_val is not None and acc_val >= 80) else \
+                            "#fbbf24" if (acc_val is not None and acc_val >= 60) else "#fca5a5"
                 sel_bg  = "#0f172a" if selected else "#1e293b"
                 sel_bd  = color if selected else "#475569"
                 sel_bw  = "2px" if selected else "1px"
@@ -926,28 +936,18 @@ def show_page(session, selected_ym):
     </div>
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.06em;
-                  text-transform:uppercase;margin-bottom:8px;">R²</div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-        <span style="color:#94a3b8;font-size:10px;">CV (검증)</span>
-        <span style="color:{r2_cv_color};font-size:16px;font-weight:800;">{r2_str}</span>
+                  text-transform:uppercase;margin-bottom:6px;">예측 정확도 (CV)</div>
+      <div style="color:{acc_color};font-size:24px;font-weight:900;margin-bottom:6px;">{acc_str}</div>
+      <div style="background:#1e293b;border-radius:4px;height:6px;width:100%;margin-bottom:6px;">
+        <div style="background:linear-gradient(90deg,{acc_color},{acc_color}99);width:{acc_bar:.0f}%;height:6px;border-radius:4px;"></div>
       </div>
-      <div style="background:#1e293b;border-radius:3px;height:3px;width:100%;margin-bottom:8px;">
-        <div style="background:linear-gradient(90deg,#34d399,#06b6d4);width:{r2_bar:.0f}%;height:3px;border-radius:3px;"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-        <span style="color:#94a3b8;font-size:10px;">In-sample (학습)</span>
-        <span style="color:{r2_in_color};font-size:16px;font-weight:800;">{r2_in_str}</span>
-      </div>
-      <div style="background:#1e293b;border-radius:3px;height:3px;width:100%;margin-bottom:6px;">
-        <div style="background:linear-gradient(90deg,#818cf8,#06b6d4);width:{r2_in_bar:.0f}%;height:3px;border-radius:3px;"></div>
-      </div>
-      <div style="color:#94a3b8;font-size:11px;">1에 가까울수록 우수</div>
+      <div style="color:#94a3b8;font-size:11px;">100% − MAPE · 높을수록 정확</div>
     </div>
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#fbbf24;font-size:11px;font-weight:700;letter-spacing:.06em;
                   text-transform:uppercase;margin-bottom:6px;">MAPE (CV)</div>
       <div style="color:#ffffff;font-size:18px;font-weight:800;">{mape_str}</div>
-      <div style="color:#94a3b8;font-size:11px;margin-top:4px;">실제 대비 % 오차</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:4px;">실제값 대비 평균 % 오차</div>
     </div>
   </div>
 </div>"""
@@ -961,10 +961,15 @@ def show_page(session, selected_ym):
                 w_tot    = sum(w for _, w in valid_ens)
                 ens_rmse = sum(r["RMSE"]*(w/w_tot) for r, w in valid_ens
                                if r.get("RMSE") is not None)
-                valid_r2 = [(r, w) for r, w in valid_ens if r.get("R2") is not None]
-                ens_r2   = (sum(r["R2"]*(w/sum(w2 for _,w2 in valid_r2))
-                               for r, w in valid_r2) if valid_r2 else 0.0)
-                ens_bar  = max(0, min(1, ens_r2)) * 100
+                valid_mape = [(r, w) for r, w in valid_ens if r.get("MAPE") is not None]
+                ens_mape = (sum(r["MAPE"]*(w/sum(w2 for _,w2 in valid_mape))
+                               for r, w in valid_mape) if valid_mape else None)
+                ens_mape_str = f"{ens_mape:.1f}%" if ens_mape is not None else "—"
+                ens_acc_val  = max(0.0, 100.0 - ens_mape) if ens_mape is not None else None
+                ens_acc_str  = f"{ens_acc_val:.1f}%" if ens_acc_val is not None else "—"
+                ens_acc_bar  = min(100, max(0, ens_acc_val)) if ens_acc_val is not None else 0
+                ens_acc_col  = "#86efac" if (ens_acc_val is not None and ens_acc_val >= 80) else \
+                               "#fbbf24" if (ens_acc_val is not None and ens_acc_val >= 60) else "#fca5a5"
                 w_desc   = " + ".join([f"{k} {int(w*100)}%" for (r,w),(k,*_) in
                                        zip(valid_ens, [("HW",), ("GBM",), ("Ridge",)])])
                 cv_rows_html += f"""
@@ -987,18 +992,18 @@ def show_page(session, selected_ym):
     </div>
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.06em;
-                  text-transform:uppercase;margin-bottom:6px;">R² (가중평균)</div>
-      <div style="color:#ffffff;font-size:18px;font-weight:800;">{ens_r2:.3f}</div>
-      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:6px;">
-        <div style="background:linear-gradient(90deg,#34d399,#fbbf24);width:{ens_bar:.0f}%;height:4px;border-radius:3px;"></div>
+                  text-transform:uppercase;margin-bottom:6px;">예측 정확도 (가중평균)</div>
+      <div style="color:{ens_acc_col};font-size:24px;font-weight:900;margin-bottom:6px;">{ens_acc_str}</div>
+      <div style="background:#1e293b;border-radius:4px;height:6px;width:100%;margin-bottom:6px;">
+        <div style="background:linear-gradient(90deg,{ens_acc_col},{ens_acc_col}99);width:{ens_acc_bar:.0f}%;height:6px;border-radius:4px;"></div>
       </div>
-      <div style="color:#94a3b8;font-size:11px;margin-top:4px;">1에 가까울수록 우수</div>
+      <div style="color:#94a3b8;font-size:11px;">100% − MAPE · 높을수록 정확</div>
     </div>
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#fbbf24;font-size:11px;font-weight:700;letter-spacing:.06em;
                   text-transform:uppercase;margin-bottom:6px;">MAPE (가중평균)</div>
-      <div style="color:#ffffff;font-size:18px;font-weight:800;">{f"{sum(r['MAPE']*(w/w_tot) for r,w in [(r,w) for r,w in valid_ens if r.get('MAPE') is not None]):.1f}%" if any(r.get('MAPE') for r,_ in valid_ens) else "—"}</div>
-      <div style="color:#94a3b8;font-size:11px;margin-top:4px;">실제 대비 % 오차</div>
+      <div style="color:#ffffff;font-size:18px;font-weight:800;">{ens_mape_str}</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:4px;">실제값 대비 평균 % 오차</div>
     </div>
   </div>
 </div>"""
@@ -1023,7 +1028,7 @@ def show_page(session, selected_ym):
     • <b style="color:#06b6d4;">Holt-Winters</b> = 계절·추세·수준을 지수평활로 분리하는 시계열 모델 (SARIMA 동일 계열)<br>
     • <b style="color:#fb923c;">GBM</b> = 여러 결정트리를 순서대로 쌓아 오차를 줄이는 트리부스팅 (XGBoost·LightGBM 동일 계열)<br>
     • <b style="color:#818cf8;">Ridge</b> = 과적합 방지 정규화가 추가된 선형 회귀<br>
-    • <b style="color:#f1f5f9;">R²</b> 1에 가까울수록 우수 &nbsp;·&nbsp; <b style="color:#f1f5f9;">RMSE</b> 낮을수록 오차 작음<br>
+    • <b style="color:#86efac;">예측 정확도</b> = 100% − MAPE · 높을수록 정확 &nbsp;·&nbsp; <b style="color:#7dd3fc;">RMSE</b> 낮을수록 오차 작음 &nbsp;·&nbsp; <b style="color:#fbbf24;">MAPE</b> 실제값 대비 평균 % 오차<br>
     • 신뢰구간: CV RMSE 기반 <b style="color:#f1f5f9;">±{ci_pct*100:.1f}%</b> &nbsp;·&nbsp; 월 평균 기울기: <b style="color:#f1f5f9;">₩{trend_slope_disp:+,.0f}</b><br>
     • <b style="color:#fbbf24;">📌 CPI 하한선</b>: 한국 소비자물가 장기 평균 <b style="color:#fbbf24;">연 3.0%</b> 적용 (통계청) — 보험료는 물가연동 특성상 이 이하로 감소하지 않음
   </div>
