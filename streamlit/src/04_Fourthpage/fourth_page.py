@@ -574,35 +574,23 @@ def show_page(session, selected_ym):
             df_trend["YEAR_MONTH"].astype(str).str[4:6]
         )
 
-        # ── 앙상블 예측: SARIMA + GBM + Ridge ──────────────────────────
+        # ── 앙상블 예측: Holt-Winters + GBM(스텀프) + Ridge — 순수 numpy ──
         import warnings; warnings.filterwarnings("ignore")
-        try:
-            from sklearn.ensemble import GradientBoostingRegressor
-            from sklearn.linear_model import Ridge
-            from sklearn.model_selection import TimeSeriesSplit
-            from sklearn.metrics import mean_squared_error, r2_score
-            _sklearn_ok = True
-        except ImportError:
-            _sklearn_ok = False
-        try:
-            from statsmodels.tsa.statespace.sarimax import SARIMAX
-            _stats_ok = True
-        except ImportError:
-            _stats_ok = False
 
-        # 피처 생성: 트렌드 인덱스 + 계절성(sin/cos)
-        def _make_features(length, first_month_num):
-            idx  = np.arange(length, dtype=float)
-            mo   = np.array([(first_month_num + i - 1) % 12 + 1 for i in range(length)])
-            sin_ = np.sin(2 * np.pi * mo / 12)
-            cos_ = np.cos(2 * np.pi * mo / 12)
-            return np.column_stack([idx, idx**2, sin_, cos_])
+        y_all    = df_trend["AVG_PREMIUM"].values.astype(float)
+        n_obs    = len(y_all)
+        start_mo = int(df_trend["YEAR_MONTH"].iloc[0][5:])
 
-        y_all      = df_trend["AVG_PREMIUM"].values.astype(float)
-        n_obs      = len(y_all)
-        start_mo   = int(df_trend["YEAR_MONTH"].iloc[0][5:])
-        X_all      = _make_features(n_obs, start_mo)
-        X_future_f = _make_features(n_obs + 24, start_mo)[n_obs:]
+        # 피처 행렬: [t, t², sin(2πm/12), cos(2πm/12)]
+        def _Xmat(length, first_mo):
+            t  = np.arange(length, dtype=float)
+            m  = np.array([(first_mo + i - 1) % 12 + 1 for i in range(length)])
+            return np.column_stack([t, t**2,
+                                    np.sin(2*np.pi*m/12),
+                                    np.cos(2*np.pi*m/12)])
+
+        X_all      = _Xmat(n_obs, start_mo)
+        X_future_f = _Xmat(n_obs + 24, start_mo)[n_obs:]
 
         # 마지막 월 다음 24개월 레이블
         last_ym = df_trend["YEAR_MONTH"].iloc[-1]
@@ -613,85 +601,101 @@ def show_page(session, selected_ym):
             if mo > 12: mo, yr = 1, yr + 1
             forecast_ym.append(f"{yr:04d}-{mo:02d}")
 
+        # ─── 순수 numpy 모델 3종 ────────────────────────────────────────
+        def _ridge_np(Xtr, ytr, Xpred, alpha=10.0):
+            """Ridge Regression — numpy linalg"""
+            c = np.linalg.solve(Xtr.T @ Xtr + alpha*np.eye(Xtr.shape[1]), Xtr.T @ ytr)
+            return Xpred @ c
+
+        def _gbm_np(Xtr, ytr, Xpred, n_iter=80, lr=0.12):
+            """Gradient Boosting (decision stumps) — numpy only, XGBoost 동일 원리"""
+            pred  = np.full(len(Xtr), ytr.mean())
+            trees = []
+            for _ in range(n_iter):
+                res  = ytr - pred
+                best = None; best_loss = np.inf
+                for f in range(Xtr.shape[1]):
+                    for pct in [20, 40, 60, 80]:
+                        thr = np.percentile(Xtr[:, f], pct)
+                        lm  = Xtr[:, f] <= thr
+                        if lm.sum() < 2 or (~lm).sum() < 2: continue
+                        lv, rv = res[lm].mean(), res[~lm].mean()
+                        loss   = ((res - np.where(lm, lv, rv))**2).mean()
+                        if loss < best_loss:
+                            best_loss = loss; best = (f, thr, lv, rv)
+                if best is None: break
+                f, thr, lv, rv = best
+                pred += lr * np.where(Xtr[:, f] <= thr, lv, rv)
+                trees.append(best)
+            out = np.full(len(Xpred), ytr.mean())
+            for f, thr, lv, rv in trees:
+                out += lr * np.where(Xpred[:, f] <= thr, lv, rv)
+            return out
+
+        def _hw_np(ytr, steps, s=12, alpha=0.3, beta=0.1, gamma=0.2):
+            """Holt-Winters Triple Exp Smoothing — SARIMA 계열, numpy only"""
+            n = len(ytr)
+            if n < s * 2:
+                slp = (ytr[-1] - ytr[0]) / max(n-1, 1)
+                return np.array([ytr[-1] + slp*h for h in range(1, steps+1)])
+            lvl = ytr[:s].mean()
+            trd = (ytr[s:2*s].mean() - lvl) / s
+            sea = [ytr[i] / (lvl or 1e-9) for i in range(s)]
+            for t in range(n):
+                si  = sea[t % s] or 1e-9; pl = lvl
+                lvl = alpha*(ytr[t]/si) + (1-alpha)*(lvl+trd)
+                trd = beta*(lvl-pl)     + (1-beta)*trd
+                sea[t%s] = gamma*(ytr[t]/lvl) + (1-gamma)*si
+            return np.array([(lvl + h*trd)*sea[(n+h-1)%s] for h in range(1, steps+1)])
+
+        # ─── TimeSeriesSplit CV (5-fold, numpy only) ─────────────────────
+        def _cv(predict_fn, n_splits=5):
+            fold = n_obs // (n_splits + 1)
+            rmses, r2s = [], []
+            for i in range(n_splits):
+                te, ve = fold*(i+1), min(fold*(i+2), n_obs)
+                if te < 13 or ve <= te: continue
+                p = predict_fn(te, ve)
+                a = y_all[te:ve]
+                if len(p) != len(a) or len(a) == 0: continue
+                ss_res = float(((a-p)**2).sum())
+                ss_tot = float(((a-a.mean())**2).sum())
+                rmses.append(float(np.sqrt(ss_res/len(a))))
+                r2s.append(float(1 - ss_res/ss_tot) if ss_tot > 0 else 0.0)
+            return (float(np.mean(rmses)) if rmses else None,
+                    float(np.mean(r2s))   if r2s   else None)
+
         cv_results = {}
-        sarima_forecast = ridge_forecast = gbm_forecast = None
+        hw_forecast = ridge_forecast = gbm_forecast = None
 
-        tscv = TimeSeriesSplit(n_splits=5) if _sklearn_ok else None
+        if n_obs >= 12:
+            rmse_r, r2_r = _cv(lambda te, ve: _ridge_np(X_all[:te], y_all[:te], X_all[te:ve]))
+            cv_results["Ridge"] = {"RMSE": rmse_r, "R2": r2_r}
+            ridge_forecast = _ridge_np(X_all, y_all, X_future_f)
 
-        # ① Ridge (선형 베이스라인)
-        if _sklearn_ok and n_obs >= 12:
-            ridge = Ridge(alpha=1.0)
-            rmses, r2s = [], []
-            for tr, val in tscv.split(X_all):
-                ridge.fit(X_all[tr], y_all[tr])
-                p = ridge.predict(X_all[val])
-                rmses.append(np.sqrt(mean_squared_error(y_all[val], p)))
-                r2s.append(r2_score(y_all[val], p))
-            cv_results["Ridge"] = {"RMSE": float(np.mean(rmses)), "R2": float(np.mean(r2s))}
-            ridge.fit(X_all, y_all)
-            ridge_forecast = ridge.predict(X_future_f)
+            rmse_g, r2_g = _cv(lambda te, ve: _gbm_np(X_all[:te], y_all[:te], X_all[te:ve]))
+            cv_results["GBM"] = {"RMSE": rmse_g, "R2": r2_g}
+            gbm_forecast = _gbm_np(X_all, y_all, X_future_f)
 
-        # ② GradientBoosting (트리부스팅 — XGBoost·LightGBM 동일 계열)
-        if _sklearn_ok and n_obs >= 12:
-            gbm = GradientBoostingRegressor(
-                n_estimators=300, max_depth=3,
-                learning_rate=0.05, subsample=0.8, random_state=42)
-            rmses, r2s = [], []
-            for tr, val in tscv.split(X_all):
-                gbm.fit(X_all[tr], y_all[tr])
-                p = gbm.predict(X_all[val])
-                rmses.append(np.sqrt(mean_squared_error(y_all[val], p)))
-                r2s.append(r2_score(y_all[val], p))
-            cv_results["GBM"] = {"RMSE": float(np.mean(rmses)), "R2": float(np.mean(r2s))}
-            gbm.fit(X_all, y_all)
-            gbm_forecast = gbm.predict(X_future_f)
+        if n_obs >= 24:
+            rmse_h, r2_h = _cv(lambda te, ve: _hw_np(y_all[:te], ve-te))
+            cv_results["HW"] = {"RMSE": rmse_h, "R2": r2_h}
+            hw_forecast = _hw_np(y_all, 24)
 
-        # ③ SARIMA(1,1,1)(1,1,0,12) — 계절성 시계열 모델
-        if _stats_ok and n_obs >= 24:
-            try:
-                sarima_rmses, sarima_r2s = [], []
-                splits = list(TimeSeriesSplit(n_splits=4).split(y_all)) if _sklearn_ok else []
-                for tr, val in splits:
-                    if len(tr) < 13: continue
-                    mdl = SARIMAX(y_all[tr], order=(1,1,1),
-                                  seasonal_order=(1,1,0,12),
-                                  enforce_stationarity=False,
-                                  enforce_invertibility=False)
-                    res = mdl.fit(disp=False)
-                    p   = res.forecast(steps=len(val))
-                    sarima_rmses.append(np.sqrt(mean_squared_error(y_all[val], p)))
-                    if _sklearn_ok:
-                        sarima_r2s.append(r2_score(y_all[val], p))
-                if sarima_rmses:
-                    cv_results["SARIMA"] = {
-                        "RMSE": float(np.mean(sarima_rmses)),
-                        "R2":   float(np.mean(sarima_r2s)) if sarima_r2s else None,
-                    }
-                # 전체로 최종 학습
-                final_sarima = SARIMAX(y_all, order=(1,1,1),
-                                       seasonal_order=(1,1,0,12),
-                                       enforce_stationarity=False,
-                                       enforce_invertibility=False).fit(disp=False)
-                sarima_forecast = final_sarima.forecast(steps=24)
-            except Exception:
-                pass
-
-        # 앙상블 가중치: SARIMA 35% + GBM 45% + Ridge 20%
+        # 앙상블: HW 35% + GBM 45% + Ridge 20%
         parts, weights = [], []
-        if sarima_forecast is not None: parts.append(sarima_forecast); weights.append(0.35)
-        if gbm_forecast   is not None: parts.append(gbm_forecast);    weights.append(0.45)
-        if ridge_forecast is not None: parts.append(ridge_forecast);  weights.append(0.20)
+        if hw_forecast    is not None: parts.append(hw_forecast);    weights.append(0.35)
+        if gbm_forecast   is not None: parts.append(gbm_forecast);   weights.append(0.45)
+        if ridge_forecast is not None: parts.append(ridge_forecast); weights.append(0.20)
         if parts:
-            w_total       = sum(weights)
-            forecast_arr  = sum(p * (w/w_total) for p, w in zip(parts, weights))
-            forecast_vals = forecast_arr.tolist()
+            wt = sum(weights)
+            forecast_vals = sum(p*(w/wt) for p, w in zip(parts, weights)).tolist()
         else:
-            last_12       = y_all[-12:]
-            trend_slope_f = (last_12[-1] - last_12[0]) / 12
-            forecast_vals = [y_all[-1] + trend_slope_f*(i+1) for i in range(24)]
+            slp = (y_all[-1] - y_all[-12]) / 12 if n_obs >= 12 else 0
+            forecast_vals = [float(y_all[-1] + slp*(i+1)) for i in range(24)]
 
-        # 신뢰구간: GBM CV RMSE 기반 (없으면 ±6%)
-        best_rmse = (cv_results.get("GBM") or cv_results.get("SARIMA") or {}).get("RMSE")
+        best_rmse = next((cv_results[k]["RMSE"] for k in ["GBM","HW","Ridge"]
+                          if cv_results.get(k) and cv_results[k]["RMSE"]), None)
         ci_pct    = (best_rmse / np.mean(y_all)) if best_rmse else 0.06
         trend_slope_disp = (forecast_vals[-1] - y_all[-1]) / 24
 
@@ -769,15 +773,15 @@ def show_page(session, selected_ym):
         with st.expander("📐 예측 모델 상세 — 모델 비교 & 검증 점수"):
             # ── 3모델 CV 결과 행 생성
             model_meta = [
-                ("SARIMA",  "시계열",    "#06b6d4",
-                 "SARIMA(1,1,1)(1,1,0,12) · Box-Jenkins 계절성 시계열 모델",
-                 cv_results.get("SARIMA"), False),
-                ("GBM",     "트리부스팅","#fb923c",
-                 "Gradient Boosting · XGBoost·LightGBM 동일 계열 · depth=3, n=300",
-                 cv_results.get("GBM"),    True),
-                ("Ridge",   "선형",      "#818cf8",
-                 "Ridge Regression · 트렌드 + 계절성(sin/cos) 피처",
-                 cv_results.get("Ridge"),  False),
+                ("Holt-Winters", "시계열",    "#06b6d4",
+                 "Triple Exponential Smoothing · SARIMA 동일 계열 · 계절·추세·수준 분리",
+                 cv_results.get("HW"),    False),
+                ("GBM",          "트리부스팅","#fb923c",
+                 "Gradient Boosting (Decision Stumps) · XGBoost·LightGBM 동일 원리 · iter=80",
+                 cv_results.get("GBM"),   True),
+                ("Ridge",        "선형",      "#818cf8",
+                 "Ridge Regression · 트렌드 + 계절성(sin/cos) 피처 · α=10",
+                 cv_results.get("Ridge"), False),
             ]
             cv_rows_html = ""
             for mkey, badge, color, desc, res, selected in model_meta:
@@ -814,20 +818,20 @@ def show_page(session, selected_ym):
 </div>"""
 
             # 앙상블 합산 행
-            ens_parts = [(cv_results.get("SARIMA"), 0.35),
-                         (cv_results.get("GBM"),    0.45),
-                         (cv_results.get("Ridge"),  0.20)]
+            ens_parts = [(cv_results.get("HW"),    0.35),
+                         (cv_results.get("GBM"),   0.45),
+                         (cv_results.get("Ridge"), 0.20)]
             valid_ens = [(r, w) for r, w in ens_parts if r]
             if valid_ens:
                 w_tot    = sum(w for _, w in valid_ens)
-                ens_rmse = sum(r["RMSE"]*(w/w_tot) for r, w in valid_ens)
-                ens_r2s  = [r["R2"] for r, _ in valid_ens if r.get("R2") is not None]
-                ens_r2   = sum(r["R2"]*(w/w_tot) for r, w in valid_ens
-                               if r.get("R2") is not None) / (sum(w/w_tot for r, w in valid_ens
-                               if r.get("R2") is not None) or 1)
+                ens_rmse = sum(r["RMSE"]*(w/w_tot) for r, w in valid_ens
+                               if r.get("RMSE") is not None)
+                valid_r2 = [(r, w) for r, w in valid_ens if r.get("R2") is not None]
+                ens_r2   = (sum(r["R2"]*(w/sum(w2 for _,w2 in valid_r2))
+                               for r, w in valid_r2) if valid_r2 else 0.0)
                 ens_bar  = max(0, min(1, ens_r2)) * 100
                 w_desc   = " + ".join([f"{k} {int(w*100)}%" for (r,w),(k,*_) in
-                                       zip(valid_ens, [("SARIMA",), ("GBM",), ("Ridge",)])])
+                                       zip(valid_ens, [("HW",), ("GBM",), ("Ridge",)])])
                 cv_rows_html += f"""
 <div style="background:linear-gradient(135deg,#0f2a20,#0f1e2a);border:2px solid #34d399;
             border-radius:8px;padding:11px 14px;display:grid;
@@ -866,7 +870,7 @@ def show_page(session, selected_ym):
             padding:12px 14px;margin-top:10px;">
   <div style="color:#64748b;font-size:11px;line-height:1.9;">
     <b style="color:#cbd5e1;">📌 해석 가이드</b><br>
-    • <b style="color:#06b6d4;">SARIMA</b> = 계절 패턴·추세·노이즈를 수식으로 분해하는 통계 시계열 모델<br>
+    • <b style="color:#06b6d4;">Holt-Winters</b> = 계절·추세·수준을 지수평활로 분리하는 시계열 모델 (SARIMA 동일 계열)<br>
     • <b style="color:#fb923c;">GBM</b> = 여러 결정트리를 순서대로 쌓아 오차를 줄이는 트리부스팅 (XGBoost·LightGBM 동일 계열)<br>
     • <b style="color:#818cf8;">Ridge</b> = 과적합 방지 정규화가 추가된 선형 회귀<br>
     • <b style="color:#e2e8f0;">R²</b> 1에 가까울수록 우수 &nbsp;·&nbsp; <b style="color:#e2e8f0;">RMSE</b> 낮을수록 오차 작음<br>
