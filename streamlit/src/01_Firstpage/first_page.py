@@ -84,6 +84,19 @@ def show_page(session, selected_ym):
         "AVG_BASE_PREMIUM": "mean",
     }).reset_index()
 
+    # calc_premium() 기반 구별 보험료 재계산 — 25구 동일 기준
+    # 10개 대표 세그먼트 조합 평균으로 "구별 표준 보험료" 산출
+    _COMBOS = [
+        ("A4", "B3", 28), ("A4", "B2", 28), ("A4", "B1", 28),
+        ("A3", "B2", 50), ("A6", "B3", 25), ("A1", "B1", 45),
+        ("A5", "B1", 65), ("A2", "B2", 55), ("A5", "B4", 65),
+        ("A5", "B5", 65),
+    ]
+    def _std_premium(gu):
+        vals = [utils.calc_premium(gu, sa, sb, inc)["final"] for sa, sb, inc in _COMBOS]
+        return round(sum(vals) / len(vals))
+    agg_df["ADJUSTED_PREMIUM_MONTHLY"] = agg_df["GU_NAME"].apply(_std_premium)
+
     avg_premium = agg_df["ADJUSTED_PREMIUM_MONTHLY"].mean()
     avg_risk = agg_df["COMPOSITE_RISK_SCORE"].mean()
 
