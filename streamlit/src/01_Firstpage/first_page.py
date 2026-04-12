@@ -796,15 +796,15 @@ def show_page(session, selected_ym):
 
     # 색상 범례
     leg1, leg2, leg3, _ = st.columns([1, 1, 1, 2])
-    for col, color, label in [
-        (leg1, "#ef4444", f"🔴 고위험  ≥ {high_thr:.0f}점"),
-        (leg2, "#f59e0b", f"🟡 중위험  {low_thr:.0f}~{high_thr:.0f}점"),
-        (leg3, "#22c55e", f"🟢 저위험  < {low_thr:.0f}점"),
+    for col, color, bg, text, label in [
+        (leg1, "#dc2626", "#fef2f2", "#7f1d1d", f"고위험  ≥ {high_thr:.0f}점"),
+        (leg2, "#d97706", "#fffbeb", "#78350f", f"중위험  {low_thr:.0f}~{high_thr:.0f}점"),
+        (leg3, "#16a34a", "#f0fdf4", "#14532d", f"저위험  < {low_thr:.0f}점"),
     ]:
         col.markdown(
-            f'<div style="border-left:3px solid {color}; padding:5px 10px; '
-            f'background:rgba(0,0,0,0.03); border-radius:0 6px 6px 0;">'
-            f'<span style="font-size:11px; color:#334155;">{label}</span></div>',
+            f'<div style="border-left:4px solid {color}; padding:8px 12px; '
+            f'background:{bg}; border-radius:0 8px 8px 0;">'
+            f'<span style="font-size:12px; font-weight:700; color:{text};">{label}</span></div>',
             unsafe_allow_html=True,
         )
 
@@ -880,13 +880,18 @@ def show_page(session, selected_ym):
         ]].copy()
         show_df = show_df.sort_values("ADJUSTED_PREMIUM_MONTHLY", ascending=False).reset_index(drop=True)
 
+        # 숫자 정수 반올림
+        for _nc in ["ADJUSTED_PREMIUM_MONTHLY", "COMPOSITE_RISK_SCORE",
+                    "FIRE_RISK_SCORE", "THEFT_RISK_SCORE", "BUILDING_RISK_SCORE", "WEATHER_RISK_SCORE"]:
+            show_df[_nc] = show_df[_nc].round(0).astype(int)
+
         # 순위 컬럼 추가
         show_df.insert(0, "순위", [f"#{i+1}" for i in range(len(show_df))])
 
         def grade_icon(g):
             return {"고위험": "🔴 고위험", "중위험": "🟡 중위험", "저위험": "🟢 저위험"}.get(g, g)
         show_df["RISK_GRADE"] = show_df["RISK_GRADE"].apply(grade_icon)
-        show_df["_diff"] = ((show_df["ADJUSTED_PREMIUM_MONTHLY"] - avg_premium) / avg_premium * 100)
+        show_df["_diff"] = ((show_df["ADJUSTED_PREMIUM_MONTHLY"] - avg_premium) / avg_premium * 100).round(1)
 
         show_df.columns = ["순위", "자치구", "월보험료", "위험도 점수", "위험 등급",
                            "🔥 화재", "🔓 도난", "🏚 건물노후", "🌧 기상", "평균대비(%)"]
@@ -923,12 +928,12 @@ def show_page(session, selected_ym):
                 "자치구": st.column_config.TextColumn("자치구", width=90),
                 "월보험료": st.column_config.NumberColumn(
                     "💰 월보험료",
-                    format="₩%,.0f",
-                    width=120,
+                    format="₩%d",
+                    width=130,
                 ),
                 "위험도 점수": st.column_config.ProgressColumn(
                     "⚠️ 위험도",
-                    format="%.1f점",
+                    format="%d점",
                     min_value=0,
                     max_value=100,
                     width=130,
@@ -936,28 +941,28 @@ def show_page(session, selected_ym):
                 "위험 등급": st.column_config.TextColumn("등급", width=90),
                 "🔥 화재": st.column_config.ProgressColumn(
                     "🔥 화재",
-                    format="%.0f",
+                    format="%d",
                     min_value=0,
                     max_value=100,
                     width=100,
                 ),
                 "🔓 도난": st.column_config.ProgressColumn(
                     "🔓 도난",
-                    format="%.0f",
+                    format="%d",
                     min_value=0,
                     max_value=100,
                     width=100,
                 ),
                 "🏚 건물노후": st.column_config.ProgressColumn(
                     "🏚 건물",
-                    format="%.0f",
+                    format="%d",
                     min_value=0,
                     max_value=100,
                     width=100,
                 ),
                 "🌧 기상": st.column_config.ProgressColumn(
                     "🌧 기상",
-                    format="%.0f",
+                    format="%d",
                     min_value=0,
                     max_value=100,
                     width=100,

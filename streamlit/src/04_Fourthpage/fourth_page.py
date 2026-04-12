@@ -804,6 +804,7 @@ def show_page(session, selected_ym):
                 tickfont=dict(color=TXT2, size=9),
                 showgrid=False, tickangle=45, nticks=20,
                 dtick="M6",
+                range=["2023-07", forecast_ym[-1] if forecast_ym else "2027-12"],
             ),
             yaxis=dict(tickprefix="₩", tickfont=dict(color=TXT2),
                        showgrid=True, gridcolor=BORDER, zeroline=False),

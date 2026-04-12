@@ -103,7 +103,7 @@ PRESETS = [
     },
     {
         "id": "P07", "icon": "🏪",
-        "name": "골목상마 자영업자", "district": "종로구", "seg_a": "A5", "seg_b": "B5",
+        "name": "골목상가 자영업자", "district": "종로구", "seg_a": "A5", "seg_b": "B5",
         "income": 72, "desc": "상가 겸용 거주, 업무장비 다수",
         "persona": "한상욱 (48세) — 종로구 상가 자영업자",
         "premium_range": "6.5~12만원", "active": True,

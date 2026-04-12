@@ -160,23 +160,24 @@ def show_page(session, selected_ym):
         </div>
     """, unsafe_allow_html=True)
 
-    # ══ STEP 2 · 페르소나 배너 ══
+    # ══ STEP 2 · 페르소나 배너 ══  (보라 계열 — STEP1과 연결)
     st.markdown(f"""
-        <div style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);
-                    padding:16px 20px; border-radius:12px; border:1px solid #334155;
-                    border-left:5px solid #6366F1; margin-bottom:20px;">
-            <div style="color:#94a3b8; font-size:0.7rem; font-weight:600;
+        <div style="background:linear-gradient(135deg,#1e1b4b 0%,#2e1065 100%);
+                    padding:16px 20px; border-radius:12px;
+                    border:1px solid #4338ca; border-left:5px solid #818cf8;
+                    margin-bottom:20px;">
+            <div style="color:#a5b4fc; font-size:0.7rem; font-weight:600;
                         text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
-                선택된 페르소나
+                ✅ 선택된 페르소나
             </div>
-            <div style="color:#fff; font-size:1.05rem; font-weight:700; margin-bottom:8px;">
+            <div style="color:#e0e7ff; font-size:1.05rem; font-weight:700; margin-bottom:8px;">
                 {sel['icon']} {sel['persona']}
             </div>
-            <span style="background:rgba(255,255,255,0.08); border:1px solid #475569;
-                         color:#cbd5e1; padding:2px 10px; border-radius:20px;
+            <span style="background:rgba(165,180,252,0.15); border:1px solid #6366f1;
+                         color:#c7d2fe; padding:2px 10px; border-radius:20px;
                          font-size:0.75rem; margin-right:8px;">📍 {sel['district']}</span>
-            <span style="background:rgba(16,185,129,0.1); border:1px solid #10b981;
-                         color:#34d399; padding:2px 10px; border-radius:20px;
+            <span style="background:rgba(16,185,129,0.15); border:1px solid #10b981;
+                         color:#6ee7b7; padding:2px 10px; border-radius:20px;
                          font-size:0.75rem;">💰 연소득 {sel['income']}백만원</span>
         </div>
     """, unsafe_allow_html=True)
@@ -194,23 +195,24 @@ def show_page(session, selected_ym):
         is_default = name in sel["default_items"]
         with item_cols[idx % 3]:
             st.markdown(f"""
-                <div style="background:#1e293b; border:1px solid #334155;
+                <div style="background:linear-gradient(135deg,#0c1a2e 0%,#0f2540 100%);
+                            border:1px solid #1e3a5f; border-top:3px solid #0ea5e9;
                             border-radius:10px; padding:12px 14px; margin-bottom:4px;">
                     <span style="font-size:1.4rem;">{info['icon']}</span>
-                    <span style="float:right; color:#64748b; font-size:0.58rem;
+                    <span style="float:right; color:#38bdf8; font-size:0.58rem;
                                  text-transform:uppercase; text-align:right; line-height:1.4;">
                         보장한도<br>
-                        <b style="color:#e2e8f0; font-size:0.78rem;">
+                        <b style="color:#bae6fd; font-size:0.78rem;">
                             ₩{info['limit']//10000:,}만원</b>
                     </span>
-                    <div style="color:#fff; font-weight:700; font-size:0.88rem;
+                    <div style="color:#f0f9ff; font-weight:700; font-size:0.88rem;
                                 margin:6px 0 2px 0;">{name}</div>
-                    <div style="color:#64748b; font-size:0.65rem;
+                    <div style="color:#7dd3fc; font-size:0.65rem;
                                 margin-bottom:6px;">{info['examples']}</div>
-                    <span style="background:rgba(16,185,129,0.12);
-                                 border:1px solid rgba(16,185,129,0.3);
+                    <span style="background:rgba(14,165,233,0.15);
+                                 border:1px solid rgba(14,165,233,0.4);
                                  border-radius:5px; padding:2px 7px;
-                                 color:#34d399; font-size:0.7rem; font-weight:600;">
+                                 color:#38bdf8; font-size:0.7rem; font-weight:600;">
                         +₩{monthly_cost:,.0f}/월</span>
                 </div>
             """, unsafe_allow_html=True)
@@ -228,14 +230,14 @@ def show_page(session, selected_ym):
             ci = utils.COVERAGE_ITEMS[it]
             with det_cols[idx]:
                 st.markdown(f"""
-                    <div style="background:#1e293b; border:1px solid #334155;
-                                border-top:3px solid #6366F1; border-radius:8px;
-                                padding:10px 12px; text-align:center;">
+                    <div style="background:linear-gradient(135deg,#052e16 0%,#14532d 100%);
+                                border:1px solid #16a34a; border-top:3px solid #22c55e;
+                                border-radius:8px; padding:10px 12px; text-align:center;">
                         <div style="font-size:1.4rem;">{ci['icon']}</div>
-                        <div style="color:#fff; font-weight:700; font-size:0.85rem;
+                        <div style="color:#dcfce7; font-weight:700; font-size:0.85rem;
                                     margin:4px 0 2px 0;">{it}</div>
-                        <div style="color:#64748b; font-size:0.65rem;">Limit</div>
-                        <div style="color:#a5b4fc; font-weight:700; font-size:0.9rem;">
+                        <div style="color:#86efac; font-size:0.65rem;">보장한도</div>
+                        <div style="color:#4ade80; font-weight:700; font-size:0.9rem;">
                             ₩{ci['limit']:,.0f}</div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -427,29 +429,37 @@ def show_page(session, selected_ym):
         fig_pie.add_trace(go.Pie(
             labels=["기본 보험료", "품목 가산"],
             values=[res["segment_adjusted"], max(res["item_addon"], 0)],
-            hole=0.62,
+            hole=0.60,
             marker=dict(
                 colors=["#6366F1", "#f97316"],
-                line=dict(color="#0f172a", width=4),
+                line=dict(color="#1e293b", width=3),
             ),
-            textinfo="percent",
-            textposition="outside",
-            textfont=dict(color="#e2e8f0", size=13, family="Arial Black"),
+            textinfo="label+percent",
+            textposition="inside",
+            insidetextorientation="horizontal",
+            textfont=dict(color="#ffffff", size=11, family="Arial Black"),
             hovertemplate="<b>%{label}</b><br>₩%{value:,.0f} (%{percent})<extra></extra>",
             direction="clockwise", sort=False,
-            pull=[0.04, 0.04],
+            pull=[0.03, 0.03],
         ))
         fig_pie.update_layout(
-            height=200,
-            margin=dict(l=30, r=30, t=10, b=10),
-            paper_bgcolor="rgba(0,0,0,0)",
+            height=220,
+            margin=dict(l=10, r=10, t=10, b=10),
+            paper_bgcolor="#1e293b",
+            plot_bgcolor="#1e293b",
             font=dict(color="#f1f5f9", size=11),
-            showlegend=False,
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                x=0.5, xanchor="center",
+                y=-0.05, yanchor="top",
+                font=dict(color="#cbd5e1", size=10),
+                bgcolor="rgba(0,0,0,0)",
+            ),
             annotations=[dict(
-                text=f"<b>부담률</b><br><b>{burden_pct:.1f}%</b>",
+                text=f"<b style='font-size:13px;color:#94a3b8'>부담률</b><br><b style='font-size:16px;color:#ffffff'>{burden_pct:.1f}%</b>",
                 x=0.5, y=0.5, xref="paper", yref="paper",
-                showarrow=False,
-                font=dict(color="#FFFFFF", size=13), align="center"
+                showarrow=False, align="center"
             )],
         )
         st.plotly_chart(fig_pie, use_container_width=True)
