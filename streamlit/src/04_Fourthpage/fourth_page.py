@@ -668,14 +668,33 @@ def show_page(session, selected_ym):
         cv_results = {}
         hw_forecast = ridge_forecast = gbm_forecast = None
 
+        # 선형 트렌드 분리 (GBM 외삽 문제 해결용)
+        # GBM은 훈련범위 밖 t값을 외삽 못함 → 트렌드 제거 후 잔차만 학습
+        t_idx      = np.arange(n_obs, dtype=float)
+        trend_coef = np.polyfit(t_idx, y_all, 1)          # slope, intercept
+        trend_in   = np.polyval(trend_coef, t_idx)
+        resid_all  = y_all - trend_in
+        t_future   = np.arange(n_obs, n_obs + 24, dtype=float)
+        trend_fut  = np.polyval(trend_coef, t_future)     # 미래 트렌드 (선형 외삽)
+        # GBM용 피처: sin/cos만 사용 (주기적 → 외삽 문제 없음)
+        X_sea_in  = X_all[:, 2:]       # sin, cos only
+        X_sea_fut = X_future_f[:, 2:]
+
         if n_obs >= 12:
             rmse_r, r2_r = _cv(lambda te, ve: _ridge_np(X_all[:te], y_all[:te], X_all[te:ve]))
             cv_results["Ridge"] = {"RMSE": rmse_r, "R2": r2_r}
             ridge_forecast = _ridge_np(X_all, y_all, X_future_f)
 
-            rmse_g, r2_g = _cv(lambda te, ve: _gbm_np(X_all[:te], y_all[:te], X_all[te:ve]))
+            # GBM: 잔차 학습 → 미래잔차 예측 + 선형트렌드 합산
+            def _gbm_cv(te, ve):
+                res_in  = resid_all[:te]
+                res_hat = _gbm_np(X_sea_in[:te], res_in, X_sea_in[te:ve])
+                return trend_in[te:ve] + res_hat
+
+            rmse_g, r2_g = _cv(_gbm_cv)
             cv_results["GBM"] = {"RMSE": rmse_g, "R2": r2_g}
-            gbm_forecast = _gbm_np(X_all, y_all, X_future_f)
+            gbm_resid_fut = _gbm_np(X_sea_in, resid_all, X_sea_fut)
+            gbm_forecast  = trend_fut + gbm_resid_fut   # 트렌드 + 계절잔차
 
         if n_obs >= 24:
             rmse_h, r2_h = _cv(lambda te, ve: _hw_np(y_all[:te], ve-te))
@@ -691,7 +710,7 @@ def show_page(session, selected_ym):
             wt = sum(weights)
             forecast_vals = sum(p*(w/wt) for p, w in zip(parts, weights)).tolist()
         else:
-            slp = (y_all[-1] - y_all[-12]) / 12 if n_obs >= 12 else 0
+            slp = float(trend_coef[0])
             forecast_vals = [float(y_all[-1] + slp*(i+1)) for i in range(24)]
 
         best_rmse = next((cv_results[k]["RMSE"] for k in ["GBM","HW","Ridge"]
