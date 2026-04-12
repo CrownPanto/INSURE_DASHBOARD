@@ -336,17 +336,17 @@ def show_page(session, selected_ym):
 
         # 최종 보험료 배너
         st.markdown(f"""
-        <div style="background:linear-gradient(90deg,{GREEN}22,{GREEN}08);
-                    border:1px solid {GREEN}55; border-radius:12px;
+        <div style="background:linear-gradient(90deg,#0f2a1e,#1e293b);
+                    border:1px solid {GREEN}88; border-radius:12px;
                     padding:16px 24px; margin:12px 0 20px;
                     display:flex; align-items:center; justify-content:space-between;">
             <div>
-                <div style="color:{TXT3}; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;">최종 산출 보험료</div>
-                <div style="color:{GREEN}; font-size:30px; font-weight:900;">₩{final:,.0f}<span style="color:{TXT3}; font-size:14px; font-weight:400;"> / 월</span></div>
+                <div style="color:#94a3b8; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;">최종 산출 보험료</div>
+                <div style="color:{GREEN}; font-size:30px; font-weight:900;">₩{final:,.0f}<span style="color:#94a3b8; font-size:14px; font-weight:400;"> / 월</span></div>
             </div>
-            <div style="color:{TXT2}; font-size:12px; text-align:right; line-height:2;">
-                리스크 계수 <span style="color:{ORANGE}; font-weight:700;">×{res['risk_mult']:.2f}</span><br>
-                세그먼트 보정 <span style="color:{INDIGO}; font-weight:700;">×{res['segment_mult']:.2f}</span>
+            <div style="font-size:12px; text-align:right; line-height:2.2;">
+                <span style="color:#cbd5e1;">리스크 계수</span>&nbsp;<span style="color:{ORANGE}; font-weight:700;">×{res['risk_mult']:.2f}</span><br>
+                <span style="color:#cbd5e1;">세그먼트 보정</span>&nbsp;<span style="color:{INDIGO}; font-weight:700;">×{res['segment_mult']:.2f}</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
