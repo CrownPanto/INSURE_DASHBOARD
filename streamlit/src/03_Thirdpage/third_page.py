@@ -117,15 +117,23 @@ def _benchmark_expander(session):
         combined = d["AVG_COMBINED"]
         uplift   = round((combined - plain) / plain * 100, 1)
 
-        def kpi_card(col, label, score, color, sub=""):
-            pct = score / 5 * 100
+        def kpi_card(col, label, score, color, sub="", fmt="score"):
+            # fmt="score" : /5.0 척도  |  fmt="pct" : % 향상률
+            if fmt == "pct":
+                pct      = min(score * 2, 100)   # 50% 향상 = 풀바 기준
+                val_html = f"+{score:.1f}%"
+                unit_html = ""
+            else:
+                pct      = min(score / 5 * 100, 100)  # 안전 캡
+                val_html = f"{score:.1f}"
+                unit_html = '<span style="color:#475569;font-size:14px;">/5.0</span>'
             col.markdown(f"""
             <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;
                         padding:16px 18px;border-top:3px solid {color};text-align:center;">
                 <div style="color:#94a3b8;font-size:11px;font-weight:700;
                             text-transform:uppercase;letter-spacing:.08em;">{label}</div>
                 <div style="color:{color};font-size:30px;font-weight:900;margin:6px 0;">
-                    {score:.1f}<span style="color:#475569;font-size:14px;">/5.0</span></div>
+                    {val_html}{unit_html}</div>
                 <div style="background:#334155;border-radius:4px;height:6px;margin:6px 0;">
                     <div style="width:{pct:.0f}%;height:100%;background:{color};
                                 border-radius:4px;"></div></div>
@@ -134,8 +142,8 @@ def _benchmark_expander(session):
 
         kpi_card(k1, "Plain RAG",  plain,    "#818cf8", "약관 검색 전용")
         kpi_card(k2, "Graph RAG",  graph,    "#fb923c", "관계 탐색 전용")
-        kpi_card(k3, "Combined",   combined, "#34d399", f"이중 RAG 통합")
-        kpi_card(k4, "향상률",     uplift,   "#fbbf24", f"Plain 대비 +{uplift}%")
+        kpi_card(k3, "Combined",   combined, "#34d399", "이중 RAG 통합")
+        kpi_card(k4, "향상률",     uplift,   "#fbbf24", f"Plain 대비 +{uplift}%", fmt="pct")
 
         st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
@@ -386,8 +394,8 @@ def _benchmark_expander(session):
             f'Google DeepMind Gemini 2.5 Pro Tech Report (2025) · 업계 수치는 동일 RAGAS 기준 /5.0 환산'
             f'</span></div>'
             f'</div>',
-            height=760,
-            scrolling=False
+            height=860,
+            scrolling=True
         )
 
         # ── 4. 점수 용어 사전 (초딩도 이해 가능) ─────────────
@@ -492,8 +500,8 @@ def _benchmark_expander(session):
             f'border-radius:14px;overflow:hidden;font-family:sans-serif;">'
             + header + rows + footer +
             f'</div>',
-            height=530,
-            scrolling=False
+            height=650,
+            scrolling=True
         )
 
         # ── 5. 발표 멘트 ──────────────────────────────────────
