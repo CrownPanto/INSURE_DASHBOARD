@@ -568,26 +568,40 @@ def show_page(session, selected_ym):
             df_trend = pd.DataFrame({"YEAR_MONTH":[m.strftime("%Y%m") for m in months],
                                      "AVG_PREMIUM": premiums})
 
+        # ── YEAR_MONTH "202101" → "2021-01" 변환 (Plotly 날짜 인식용) ──
+        df_trend["YEAR_MONTH"] = (
+            df_trend["YEAR_MONTH"].astype(str).str[:4] + "-" +
+            df_trend["YEAR_MONTH"].astype(str).str[4:6]
+        )
+
+        # ── 예측: 실데이터 마지막 월 다음부터 24개월 동적 생성 ──
         if len(df_trend) >= 12:
-            last_12       = df_trend["AVG_PREMIUM"].tail(12).values
-            trend_slope   = (last_12[-1] - last_12[0]) / 12
-            forecast_ym   = [f"2026{str(m).zfill(2)}" if m<=12 else f"2027{str(m-12).zfill(2)}"
-                             for m in range(1,25)]
-            forecast_vals = [df_trend["AVG_PREMIUM"].iloc[-1] + trend_slope*(i+1) for i in range(24)]
+            last_12     = df_trend["AVG_PREMIUM"].tail(12).values
+            trend_slope = (last_12[-1] - last_12[0]) / 12
+            last_ym     = df_trend["YEAR_MONTH"].iloc[-1]          # e.g. "2025-12"
+            yr, mo      = int(last_ym[:4]), int(last_ym[5:])
+            forecast_ym = []
+            for _ in range(24):
+                mo += 1
+                if mo > 12: mo, yr = 1, yr + 1
+                forecast_ym.append(f"{yr:04d}-{mo:02d}")
+            forecast_vals = [df_trend["AVG_PREMIUM"].iloc[-1] + trend_slope*(i+1)
+                             for i in range(24)]
         else:
             forecast_ym, forecast_vals = [], []
 
         if forecast_vals:
-            delta   = forecast_vals[-1] - df_trend["AVG_PREMIUM"].iloc[-1]
-            d_col   = RED if delta > 0 else GREEN
-            d_icon  = "▲" if delta > 0 else "▼"
-            d_pct   = abs(delta / df_trend["AVG_PREMIUM"].iloc[-1] * 100)
+            delta    = forecast_vals[-1] - df_trend["AVG_PREMIUM"].iloc[-1]
+            d_col    = RED if delta > 0 else GREEN
+            d_icon   = "▲" if delta > 0 else "▼"
+            d_pct    = abs(delta / df_trend["AVG_PREMIUM"].iloc[-1] * 100)
+            end_label = forecast_ym[-1] if forecast_ym else "2027-12"
             st.markdown(f"""
             <div style="background:linear-gradient(90deg,{INDIGO}18,{INDIGO}06);
                         border:1px solid {INDIGO}44; border-radius:10px;
                         padding:14px 20px; margin-bottom:16px;
                         display:flex; align-items:center; justify-content:space-between;">
-                <span style="color:{TXT2}; font-size:12px; font-weight:600;">2027년 예측 보험료</span>
+                <span style="color:{TXT2}; font-size:12px; font-weight:600;">{end_label} 예측 보험료</span>
                 <span style="color:{TXT1}; font-size:18px; font-weight:800;">₩{forecast_vals[-1]:,.0f} / 월</span>
                 <span style="color:{d_col}; font-size:14px; font-weight:700;">{d_icon} ₩{abs(delta):,.0f} ({d_pct:.1f}%)</span>
             </div>
@@ -615,15 +629,29 @@ def show_page(session, selected_ym):
             hovertemplate="<b>%{x}</b><br>₩%{y:,.0f}<extra>실데이터</extra>",
         ))
         if forecast_ym:
+            fig_trend.add_vline(
+                x=df_trend["YEAR_MONTH"].iloc[-1],
+                line=dict(color=TXT3, width=1, dash="dot"),
+            )
             fig_trend.add_annotation(
-                x=df_trend["YEAR_MONTH"].iloc[-1], y=1, xref="x", yref="paper",
-                text="예측 →", showarrow=False,
-                font=dict(color=TXT3, size=10), xanchor="left", yanchor="top",
+                x=df_trend["YEAR_MONTH"].iloc[-1], y=0.97,
+                xref="x", yref="paper",
+                text="◀ 실데이터  예측 ▶",
+                showarrow=False,
+                font=dict(color=TXT3, size=10),
+                xanchor="center", yanchor="top",
+                bgcolor=BG, borderpad=3,
             )
         fig_trend.update_layout(
-            height=360, plot_bgcolor=BG, paper_bgcolor=BG,
+            height=380, plot_bgcolor=BG, paper_bgcolor=BG,
             font=dict(color=TXT1),
-            xaxis=dict(tickfont=dict(color=TXT2, size=9), showgrid=False, tickangle=45, nticks=20),
+            xaxis=dict(
+                type="date",
+                tickformat="%Y-%m",
+                tickfont=dict(color=TXT2, size=9),
+                showgrid=False, tickangle=45, nticks=20,
+                dtick="M6",                          # 6개월 단위 눈금
+            ),
             yaxis=dict(tickprefix="₩", tickfont=dict(color=TXT2),
                        showgrid=True, gridcolor=BORDER, zeroline=False),
             legend=dict(orientation="h", y=1.08, font=dict(color=TXT2, size=11),
@@ -631,3 +659,34 @@ def show_page(session, selected_ym):
             margin=dict(l=10, r=10, t=40, b=60),
         )
         st.plotly_chart(fig_trend, use_container_width=True)
+
+        # ── 예측 방법론 설명 ───────────────────────────────────────────
+        with st.expander("📐 예측 모델 상세 — 어떻게 계산했나요?"):
+            st.markdown(f"""
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;">
+    <div style="color:#818cf8;font-size:11px;font-weight:700;margin-bottom:4px;">📊 데이터 기반</div>
+    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">실데이터 {len(df_trend)}개월</div>
+    <div style="color:#94a3b8;font-size:11px;">{df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]}</div>
+  </div>
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;">
+    <div style="color:#fbbf24;font-size:11px;font-weight:700;margin-bottom:4px;">📈 예측 알고리즘</div>
+    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">선형 트렌드 외삽</div>
+    <div style="color:#94a3b8;font-size:11px;">최근 12개월 slope 적용</div>
+  </div>
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;">
+    <div style="color:#34d399;font-size:11px;font-weight:700;margin-bottom:4px;">🎯 예측 기간 & 신뢰구간</div>
+    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">24개월 · ±8%</div>
+    <div style="color:#94a3b8;font-size:11px;">{forecast_ym[0] if forecast_ym else "-"} ~ {forecast_ym[-1] if forecast_ym else "-"}</div>
+  </div>
+</div>
+<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px;">
+  <div style="color:#94a3b8;font-size:11px;line-height:1.7;">
+    <b style="color:#e2e8f0;">📌 해석 가이드</b><br>
+    • <b style="color:#fbbf24;">노란 점선</b> = Cortex ML 예측값 (선형 트렌드 기반)<br>
+    • <b style="color:#fbbf24;">노란 음영</b> = 신뢰구간 90% (±8% 범위 — 실제값이 이 안에 들어올 확률)<br>
+    • <b style="color:#64748b;">점선 수직선</b> = 실데이터 종료 / 예측 시작 경계<br>
+    • 월별 상승 기울기: <b style="color:#e2e8f0;">₩{trend_slope:+,.0f} / 월</b> (최근 12개월 평균)
+  </div>
+</div>
+""", unsafe_allow_html=True)
