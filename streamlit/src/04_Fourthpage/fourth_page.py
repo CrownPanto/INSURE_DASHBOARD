@@ -780,7 +780,7 @@ def show_page(session, selected_ym):
                 bgcolor=BG, borderpad=3,
             )
         fig_trend.update_layout(
-            height=380, plot_bgcolor=BG, paper_bgcolor=BG,
+            height=260, plot_bgcolor=BG, paper_bgcolor=BG,
             font=dict(color=TXT1),
             xaxis=dict(
                 type="date",
