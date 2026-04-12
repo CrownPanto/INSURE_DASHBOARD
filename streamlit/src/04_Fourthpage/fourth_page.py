@@ -52,6 +52,29 @@ def show_page(session, selected_ym):
         background:{CARD}; border-radius:10px !important;
         border:1px solid {BORDER} !important; color:{TXT2} !important; font-size:13px !important;
     }}
+
+    /* ── 슬라이더 가시성 (밝은 배경 대응) ── */
+    div[data-testid="stSlider"] > div {{
+        background: transparent !important;
+    }}
+    div[data-testid="stSlider"] [data-baseweb="slider"] div[role="slider"] {{
+        background: {INDIGO} !important;
+        border: 2px solid #fff !important;
+        box-shadow: 0 0 0 3px {INDIGO}55 !important;
+        width: 20px !important; height: 20px !important;
+    }}
+    div[data-testid="stSlider"] [data-baseweb="slider"] div[class*="Track"] > div:first-child {{
+        background: {INDIGO} !important;
+    }}
+    div[data-testid="stSlider"] [data-baseweb="slider"] div[class*="Track"] {{
+        background: {BORDER} !important;
+        height: 4px !important;
+    }}
+    div[data-testid="stSlider"] p {{
+        color: {TXT1} !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -690,10 +713,17 @@ def show_page(session, selected_ym):
         X_sea_in  = X_all[:, 2:]       # sin, cos only
         X_sea_fut = X_future_f[:, 2:]
 
+        def _r2_insample(actual, predicted):
+            ss_res = float(((actual - predicted)**2).sum())
+            ss_tot = float(((actual - actual.mean())**2).sum())
+            return float(1 - ss_res / ss_tot) if ss_tot > 0 else 0.0
+
         if n_obs >= 12:
             rmse_r, r2_r, mape_r = _cv(lambda te, ve: _ridge_np(X_all[:te], y_all[:te], X_all[te:ve]))
-            cv_results["Ridge"] = {"RMSE": rmse_r, "R2": r2_r, "MAPE": mape_r}
-            ridge_forecast = _ridge_np(X_all, y_all, X_future_f)
+            ridge_forecast  = _ridge_np(X_all, y_all, X_future_f)
+            ridge_pred_in   = _ridge_np(X_all, y_all, X_all)
+            r2_r_in         = _r2_insample(y_all, ridge_pred_in)
+            cv_results["Ridge"] = {"RMSE": rmse_r, "R2": r2_r, "MAPE": mape_r, "R2_in": r2_r_in}
 
             # GBM: 잔차 학습 → 미래잔차 예측 + 선형트렌드 합산
             def _gbm_cv(te, ve):
@@ -702,14 +732,21 @@ def show_page(session, selected_ym):
                 return trend_in[te:ve] + res_hat
 
             rmse_g, r2_g, mape_g = _cv(_gbm_cv)
-            cv_results["GBM"] = {"RMSE": rmse_g, "R2": r2_g, "MAPE": mape_g}
-            gbm_resid_fut = _gbm_np(X_sea_in, resid_all, X_sea_fut)
-            gbm_forecast  = trend_fut + gbm_resid_fut   # 트렌드 + 계절잔차
+            gbm_resid_fut   = _gbm_np(X_sea_in, resid_all, X_sea_fut)
+            gbm_forecast    = trend_fut + gbm_resid_fut
+            gbm_pred_in     = trend_in + _gbm_np(X_sea_in, resid_all, X_sea_in)
+            r2_g_in         = _r2_insample(y_all, gbm_pred_in)
+            cv_results["GBM"] = {"RMSE": rmse_g, "R2": r2_g, "MAPE": mape_g, "R2_in": r2_g_in}
 
         if n_obs >= 24:
             rmse_h, r2_h, mape_h = _cv(lambda te, ve: _hw_np(y_all[:te], ve-te))
-            cv_results["HW"] = {"RMSE": rmse_h, "R2": r2_h, "MAPE": mape_h}
-            hw_forecast = _hw_np(y_all, 24)
+            hw_forecast  = _hw_np(y_all, 24)
+            hw_pred_in   = _hw_np(y_all, 0) if n_obs > 0 else y_all
+            # HW in-sample: 1-step-ahead fitted values 근사 (마지막 24개 재예측)
+            _hw_fit_steps = min(n_obs, 24)
+            hw_pred_in2  = _hw_np(y_all[:-_hw_fit_steps], _hw_fit_steps) if n_obs > _hw_fit_steps else y_all
+            r2_h_in      = _r2_insample(y_all[-_hw_fit_steps:], hw_pred_in2[:_hw_fit_steps])
+            cv_results["HW"] = {"RMSE": rmse_h, "R2": r2_h, "MAPE": mape_h, "R2_in": r2_h_in}
 
         # ── 최우수 단일 모델 자동 선택 (RMSE 기준) ─────────────────────
         _candidates = [
@@ -854,12 +891,17 @@ def show_page(session, selected_ym):
             ]
             cv_rows_html = ""
             for mkey, badge, color, desc, res, selected in model_meta:
-                rmse_str = f"₩{res['RMSE']:,.0f}" if res else "—"
-                r2_val   = res['R2']   if (res and res.get('R2')   is not None) else None
-                mape_val = res['MAPE'] if (res and res.get('MAPE') is not None) else None
-                r2_str   = f"{r2_val:.3f}"  if r2_val   is not None else "—"
-                mape_str = f"{mape_val:.1f}%" if mape_val is not None else "—"
-                r2_bar   = max(0, min(1, r2_val)) * 100 if r2_val is not None else 0
+                rmse_str  = f"₩{res['RMSE']:,.0f}" if res else "—"
+                r2_val    = res['R2']    if (res and res.get('R2')    is not None) else None
+                r2_in_val = res['R2_in'] if (res and res.get('R2_in') is not None) else None
+                mape_val  = res['MAPE']  if (res and res.get('MAPE')  is not None) else None
+                r2_str    = f"{r2_val:.3f}"    if r2_val    is not None else "—"
+                r2_in_str = f"{r2_in_val:.3f}" if r2_in_val is not None else "—"
+                mape_str  = f"{mape_val:.1f}%" if mape_val  is not None else "—"
+                r2_bar    = max(0, min(1, r2_val))    * 100 if r2_val    is not None else 0
+                r2_in_bar = max(0, min(1, r2_in_val)) * 100 if r2_in_val is not None else 0
+                r2_cv_color  = "#86efac" if (r2_val    is not None and r2_val    >= 0) else "#fca5a5"
+                r2_in_color  = "#86efac" if (r2_in_val is not None and r2_in_val >= 0) else "#fca5a5"
                 sel_bg  = "#0f172a" if selected else "#1e293b"
                 sel_bd  = color if selected else "#475569"
                 sel_bw  = "2px" if selected else "1px"
@@ -880,22 +922,32 @@ def show_page(session, selected_ym):
       <div style="color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:.06em;
                   text-transform:uppercase;margin-bottom:6px;">RMSE (CV)</div>
       <div style="color:#ffffff;font-size:18px;font-weight:800;">{rmse_str}</div>
-      <div style="color:#64748b;font-size:11px;margin-top:4px;">낮을수록 오차 적음</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:4px;">낮을수록 오차 적음</div>
     </div>
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.06em;
-                  text-transform:uppercase;margin-bottom:6px;">R² (CV)</div>
-      <div style="color:#ffffff;font-size:18px;font-weight:800;">{r2_str}</div>
-      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:6px;">
-        <div style="background:linear-gradient(90deg,#34d399,#06b6d4);width:{r2_bar:.0f}%;height:4px;border-radius:3px;"></div>
+                  text-transform:uppercase;margin-bottom:8px;">R²</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+        <span style="color:#94a3b8;font-size:10px;">CV (검증)</span>
+        <span style="color:{r2_cv_color};font-size:16px;font-weight:800;">{r2_str}</span>
       </div>
-      <div style="color:#64748b;font-size:11px;margin-top:4px;">1에 가까울수록 우수</div>
+      <div style="background:#1e293b;border-radius:3px;height:3px;width:100%;margin-bottom:8px;">
+        <div style="background:linear-gradient(90deg,#34d399,#06b6d4);width:{r2_bar:.0f}%;height:3px;border-radius:3px;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+        <span style="color:#94a3b8;font-size:10px;">In-sample (학습)</span>
+        <span style="color:{r2_in_color};font-size:16px;font-weight:800;">{r2_in_str}</span>
+      </div>
+      <div style="background:#1e293b;border-radius:3px;height:3px;width:100%;margin-bottom:6px;">
+        <div style="background:linear-gradient(90deg,#818cf8,#06b6d4);width:{r2_in_bar:.0f}%;height:3px;border-radius:3px;"></div>
+      </div>
+      <div style="color:#94a3b8;font-size:11px;">1에 가까울수록 우수</div>
     </div>
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#fbbf24;font-size:11px;font-weight:700;letter-spacing:.06em;
                   text-transform:uppercase;margin-bottom:6px;">MAPE (CV)</div>
       <div style="color:#ffffff;font-size:18px;font-weight:800;">{mape_str}</div>
-      <div style="color:#64748b;font-size:11px;margin-top:4px;">실제 대비 % 오차</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:4px;">실제 대비 % 오차</div>
     </div>
   </div>
 </div>"""
@@ -931,7 +983,7 @@ def show_page(session, selected_ym):
       <div style="color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:.06em;
                   text-transform:uppercase;margin-bottom:6px;">RMSE (가중평균)</div>
       <div style="color:#ffffff;font-size:18px;font-weight:800;">₩{ens_rmse:,.0f}</div>
-      <div style="color:#64748b;font-size:11px;margin-top:4px;">낮을수록 오차 적음</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:4px;">낮을수록 오차 적음</div>
     </div>
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.06em;
@@ -940,13 +992,13 @@ def show_page(session, selected_ym):
       <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:6px;">
         <div style="background:linear-gradient(90deg,#34d399,#fbbf24);width:{ens_bar:.0f}%;height:4px;border-radius:3px;"></div>
       </div>
-      <div style="color:#64748b;font-size:11px;margin-top:4px;">1에 가까울수록 우수</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:4px;">1에 가까울수록 우수</div>
     </div>
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#fbbf24;font-size:11px;font-weight:700;letter-spacing:.06em;
                   text-transform:uppercase;margin-bottom:6px;">MAPE (가중평균)</div>
       <div style="color:#ffffff;font-size:18px;font-weight:800;">{f"{sum(r['MAPE']*(w/w_tot) for r,w in [(r,w) for r,w in valid_ens if r.get('MAPE') is not None]):.1f}%" if any(r.get('MAPE') for r,_ in valid_ens) else "—"}</div>
-      <div style="color:#64748b;font-size:11px;margin-top:4px;">실제 대비 % 오차</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:4px;">실제 대비 % 오차</div>
     </div>
   </div>
 </div>"""
