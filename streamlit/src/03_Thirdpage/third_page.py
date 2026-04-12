@@ -361,7 +361,7 @@ def _benchmark_expander(session):
             f'Gao et al. arXiv:2312.10997 · 업계 수치는 동일 RAGAS 기준 /5.0 환산'
             f'</span></div>'
             f'</div>',
-            height=560,
+            height=760,
             scrolling=False
         )
 
