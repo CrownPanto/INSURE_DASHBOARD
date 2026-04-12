@@ -25,23 +25,79 @@ def show_page(session, selected_ym):
             border-color: #6366F1 !important;
             box-shadow: 0 0 12px rgba(99,102,241,0.35);
         }
+        /* 선택 버튼 — secondary (미선택) */
+        div[data-testid="stButton"] > button[kind="secondary"] {
+            background-color: #334155 !important;
+            color: #e2e8f0 !important;
+            border: 1px solid #475569 !important;
+            border-radius: 6px !important;
+            font-size: 0.78rem !important;
+            font-weight: 600 !important;
+        }
+        div[data-testid="stButton"] > button[kind="secondary"]:hover {
+            background-color: #475569 !important;
+            border-color: #6366F1 !important;
+            color: #ffffff !important;
+        }
+        /* 선택 버튼 — primary (선택됨) */
+        div[data-testid="stButton"] > button[kind="primary"] {
+            background-color: #6366F1 !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 6px !important;
+            font-size: 0.78rem !important;
+            font-weight: 700 !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("🎯 맞춤 보험 시뮬레이터")
-    st.caption("고객 유형에 맞는 최적의 보장 설계를 시뮬레이션 하세요.")
+    st.markdown("""
+        <div style="background:#1e293b; border-bottom:2px solid #334155;
+                    padding:18px 24px 14px 24px; margin-bottom:16px;
+                    border-radius:0 0 10px 10px;">
+            <div style="color:#f1f5f9; font-size:1.5rem; font-weight:800;
+                        letter-spacing:-0.5px; line-height:1.2;">
+                🎯 맞춤 보험 시뮬레이터
+            </div>
+            <div style="color:#94a3b8; font-size:0.85rem; margin-top:5px;">
+                고객 유형에 맞는 최적의 보장 설계를 시뮬레이션 하세요.
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
     with st.expander("📖 사용 가이드"):
         st.markdown("""
-        **동산보험** — 집 안 가전·전자기기·가구 등이 화재·도난·파손으로 손해를 입었을 때 보상하는 보험입니다.
+            <div style="padding:4px 0;">
+                <div style="color:#1e293b; font-size:0.9rem; font-weight:700; margin-bottom:10px;">
+                    🏠 동산보험이란?
+                </div>
+                <div style="color:#334155; font-size:0.85rem; line-height:1.7; margin-bottom:14px;
+                            background:#f8fafc; border-left:3px solid #6366f1;
+                            padding:8px 12px; border-radius:0 6px 6px 0;">
+                    집 안의 <b>가전제품·전자기기·가구</b> 등이 <b>화재·도난·파손</b>으로
+                    손해를 입었을 때 보상하는 보험입니다.
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
-        | 용어 | 설명 |
-        |------|------|
-        | 기본 보험료 | 거주 지역 위험도 + 가구 유형으로 결정 |
-        | 품목 가산 | 선택 품목의 가치·파손 확률 반영 추가 금액 |
-        | 리스크 점수 | 화재·도난·건물 위험도 0~100점 지수 |
-        | 부담상한 | 월소득 2% 초과 시 자동 조정 |
-        """)
+        terms = [
+            ("💰", "기본 보험료", "거주 지역 위험도 + 가구 유형으로 결정", "#6366f1", "#eef2ff"),
+            ("➕", "품목 가산",   "선택 품목의 가치·파손 확률 반영 추가 금액", "#f97316", "#fff7ed"),
+            ("⚠️", "리스크 점수", "화재·도난·건물 위험도를 0~100점으로 환산", "#ef4444", "#fef2f2"),
+            ("🛡️", "부담상한",   "보험료가 월소득 2% 초과 시 자동으로 낮아짐", "#10b981", "#f0fdf4"),
+        ]
+        cols = st.columns(4)
+        for col, (icon, term, desc, color, bg) in zip(cols, terms):
+            col.markdown(f"""
+                <div style="background:{bg}; border:1px solid {color}40;
+                            border-top:3px solid {color}; border-radius:8px;
+                            padding:10px 12px; text-align:center;">
+                    <div style="font-size:1.3rem; margin-bottom:4px;">{icon}</div>
+                    <div style="color:{color}; font-size:0.8rem; font-weight:800;
+                                margin-bottom:4px;">{term}</div>
+                    <div style="color:#475569; font-size:0.7rem; line-height:1.5;">{desc}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
     # ══ STEP 1 · 고객 프로필 선택 (컴팩트) ══
     st.markdown("""

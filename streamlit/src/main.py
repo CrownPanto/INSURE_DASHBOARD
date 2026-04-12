@@ -5,8 +5,23 @@ from snowflake.snowpark import Session
 
 # ─── 세션 및 로더 설정 ───
 def get_session():
-    try: return get_active_session()
-    except: return Session.builder.configs(st.secrets["connections"]["snowpark"]).create()
+    try:
+        return get_active_session()
+    except:
+        try:
+            conn = st.secrets["connections"]["snowpark"]
+            return Session.builder.configs({
+                "account":   conn["account"],
+                "user":      conn["user"],
+                "password":  conn["password"],
+                "role":      conn["role"],
+                "warehouse": conn["warehouse"],
+                "database":  conn["database"],
+                "schema":    conn["schema"],
+            }).create()
+        except Exception as e:
+            st.error(f"❌ Snowflake 연결 실패: {e}")
+            return None
 
 def load_page(file_path):
     spec = importlib.util.spec_from_file_location("page_module", file_path)
