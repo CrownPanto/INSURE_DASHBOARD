@@ -670,9 +670,9 @@ def show_page(session, selected_ym):
     <div style="color:#94a3b8;font-size:11px;">{df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]}</div>
   </div>
   <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;">
-    <div style="color:#fbbf24;font-size:11px;font-weight:700;margin-bottom:4px;">📈 예측 알고리즘</div>
-    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">선형 트렌드 외삽</div>
-    <div style="color:#94a3b8;font-size:11px;">최근 12개월 slope 적용</div>
+    <div style="color:#fbbf24;font-size:11px;font-weight:700;margin-bottom:4px;">📈 예측 모델</div>
+    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">선형 추세 모형</div>
+    <div style="color:#94a3b8;font-size:11px;">Linear Trend Model · 최근 12개월 OLS 기울기</div>
   </div>
   <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;">
     <div style="color:#34d399;font-size:11px;font-weight:700;margin-bottom:4px;">🎯 예측 기간 & 신뢰구간</div>
