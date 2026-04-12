@@ -339,25 +339,131 @@ def _benchmark_expander(session):
                 f'<div style="flex-shrink:0;text-align:center;'
                 f'background:{ins["color"]}18;border:1px solid {ins["color"]}44;'
                 f'border-radius:10px;padding:10px 14px;min-width:90px;">'
-                f'<div style="color:#64748b;font-size:9px;font-weight:700;'
+                f'<div style="color:#64748b;font-size:10px;font-weight:700;'
                 f'text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">{ins["tag"]}</div>'
-                f'<div style="color:{ins["color"]};font-size:13px;font-weight:900;line-height:1.3;">'
+                f'<div style="color:{ins["color"]};font-size:15px;font-weight:900;line-height:1.3;">'
                 f'{ins["score"]}</div>'
                 f'</div>'
 
                 # 설명 블록
                 f'<div>'
-                f'<div style="color:#f1f5f9;font-size:13px;font-weight:800;margin-bottom:6px;">'
+                f'<div style="color:#f1f5f9;font-size:15px;font-weight:800;margin-bottom:8px;">'
                 f'{ins["heading"]}</div>'
-                f'<div style="color:#94a3b8;font-size:12px;line-height:1.7;">{ins["body"]}</div>'
+                f'<div style="color:#cbd5e1;font-size:13px;line-height:1.8;">{ins["body"]}</div>'
                 f'</div>'
 
                 f'</div>'
                 f'</div>',
-                height=155
+                height=170
             )
 
-        # ── 4. 발표 멘트 ──────────────────────────────────────
+        # ── 4. 점수 용어 사전 (초딩도 이해 가능) ─────────────
+        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+        st.markdown("##### 📖 점수 항목이 뭔 뜻이에요?")
+
+        GLOSSARY = [
+            ("🎯", "Faithfulness\n신뢰도",
+             f"{d['AVG_FAITHFULNESS']:.1f}점",
+             "#34d399",
+             "AI가 지어낸 말 없이 실제 자료에서만 답했는가",
+             "시험 볼 때 교과서에 있는 내용만 쓰면 만점, 없는 내용 지어내면 0점"),
+
+            ("💬", "Answer Relevancy\n답변 관련성",
+             f"{d['AVG_ANSWER_RELEVANCY']:.1f}점",
+             "#818cf8",
+             "질문에 딱 맞는 답을 했는가",
+             '"강남구 보험료?" 물었는데 "보험이란 위험에 대비하는..."처럼 딴소리하면 낮은 점수'),
+
+            ("🔍", "Context Precision\n검색 정밀도",
+             f"{d['AVG_CTX_PRECISION']:.1f}점",
+             "#818cf8",
+             "AI가 찾아온 자료 중 쓸모 있는 비율이 얼마나 되는가",
+             "도서관에서 책 10권 가져왔는데 9권이 관련 없으면 낮은 점수"),
+
+            ("📚", "Context Recall\n검색 재현율",
+             f"{d['AVG_CTX_RECALL']:.1f}점",
+             "#fbbf24",
+             "답변에 필요한 자료를 빠뜨리지 않고 모두 찾아왔는가",
+             "정답에 필요한 내용이 5개인데 3개만 찾아왔으면 60점"),
+
+            ("🕸️", "Graph Coverage\n그래프 탐색률",
+             f"{d['AVG_GRAPH_COVERAGE']:.1f}점",
+             "#fb923c",
+             "관계 질문에서 연결된 노드를 얼마나 잘 따라갔는가",
+             '"화재위험→리스크→보험료" 경로를 끝까지 따라가면 만점, 중간에 끊기면 감점'),
+
+            ("🚦", "Routing Accuracy\n질문 분류 정확도",
+             f"{d['AVG_ROUTING_ACCURACY']:.1f}점",
+             "#fbbf24",
+             "질문 종류(약관/관계/숫자)를 맞게 판단해서 올바른 도구로 보냈는가",
+             '"강남구 보험료?" → SQL 도구로 보내야 정답. RAG로 보내면 틀린 라우팅'),
+        ]
+
+        header = (
+            '<div style="display:grid;grid-template-columns:48px 200px 80px 1fr 1fr;'
+            'gap:0;padding:12px 20px;background:#0d1829;border-bottom:2px solid #334155;">'
+            '<div style="color:#475569;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;"></div>'
+            '<div style="color:#475569;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">지표 이름</div>'
+            '<div style="color:#475569;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:center;">점수</div>'
+            '<div style="color:#475569;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding-left:16px;">한 줄 정의</div>'
+            '<div style="color:#475569;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding-left:16px;">이렇게 생각해요</div>'
+            '</div>'
+        )
+
+        rows = ""
+        for i, (emoji, name, score, color, definition, analogy) in enumerate(GLOSSARY):
+            row_bg = "#1a2538" if i % 2 == 0 else "#1e293b"
+            name_lines = name.split("\n")
+            name_html = (
+                f'<div style="color:#f1f5f9;font-size:14px;font-weight:800;">{name_lines[0]}</div>'
+                f'<div style="color:#475569;font-size:11px;margin-top:2px;">{name_lines[1]}</div>'
+                if len(name_lines) > 1 else
+                f'<div style="color:#f1f5f9;font-size:14px;font-weight:800;">{name_lines[0]}</div>'
+            )
+            rows += (
+                f'<div style="display:grid;grid-template-columns:48px 200px 80px 1fr 1fr;'
+                f'align-items:center;gap:0;padding:14px 20px;background:{row_bg};'
+                f'border-bottom:1px solid #243347;">'
+
+                f'<div style="font-size:22px;text-align:center;">{emoji}</div>'
+
+                f'<div>{name_html}</div>'
+
+                f'<div style="text-align:center;">'
+                f'<span style="background:{color}22;color:{color};font-size:15px;'
+                f'font-weight:900;padding:4px 10px;border-radius:8px;border:1px solid {color}44;">'
+                f'{score}</span></div>'
+
+                f'<div style="padding-left:16px;color:#cbd5e1;font-size:13px;line-height:1.5;">{definition}</div>'
+
+                f'<div style="padding-left:16px;background:#0f172a;border-radius:8px;'
+                f'padding:10px 14px;margin:4px 0;color:#94a3b8;font-size:12px;'
+                f'line-height:1.6;font-style:italic;">'
+                f'<span style="color:#fbbf24;font-style:normal;font-weight:700;">예)</span> {analogy}</div>'
+
+                f'</div>'
+            )
+
+        footer = (
+            '<div style="background:#0d1829;padding:12px 20px;border-top:1px solid #334155;">'
+            '<span style="color:#475569;font-size:11px;">📐 평가 기준: '
+            '<span style="color:#818cf8;font-weight:700;">RAGAS Framework</span> '
+            '(Barnett et al., 2023, arXiv:2309.15217) · '
+            '<span style="color:#818cf8;font-weight:700;">LLM-as-Judge</span>: mistral-large2 채점 · '
+            '골든셋 20개 질문 · 5점 만점</span>'
+            '</div>'
+        )
+
+        components.html(
+            f'<div style="background:#1e293b;border:1px solid #334155;'
+            f'border-radius:14px;overflow:hidden;font-family:sans-serif;">'
+            + header + rows + footer +
+            f'</div>',
+            height=530,
+            scrolling=False
+        )
+
+        # ── 5. 발표 멘트 ──────────────────────────────────────
         st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
         st.markdown(f"""
 > **발표 포인트** — 저희는 RAG를 구현하는 데 그치지 않고 성능을 **검증**했습니다.
