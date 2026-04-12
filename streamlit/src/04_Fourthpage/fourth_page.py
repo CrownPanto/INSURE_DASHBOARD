@@ -708,10 +708,19 @@ def show_page(session, selected_ym):
         if ridge_forecast is not None: parts.append(ridge_forecast); weights.append(0.20)
         if parts:
             wt = sum(weights)
-            forecast_vals = sum(p*(w/wt) for p, w in zip(parts, weights)).tolist()
+            raw_forecast = sum(p*(w/wt) for p, w in zip(parts, weights))
         else:
             slp = float(trend_coef[0])
-            forecast_vals = [float(y_all[-1] + slp*(i+1)) for i in range(24)]
+            raw_forecast = np.array([y_all[-1] + slp*(i+1) for i in range(24)])
+
+        # ── 물가 상승률(CPI) 하한선 적용 ─────────────────────────────
+        # 한국 소비자물가지수 장기 평균 ~3.0% / 년 (통계청 기준)
+        # 보험료는 물가연동 특성 → 최소 CPI 상승률 이하로 감소 불가
+        CPI_ANNUAL   = 0.030          # 연 3.0%
+        CPI_MONTHLY  = CPI_ANNUAL / 12
+        cpi_floor    = np.array([y_all[-1] * (1 + CPI_MONTHLY)**(i+1) for i in range(24)])
+        forecast_arr = np.maximum(raw_forecast, cpi_floor)
+        forecast_vals = forecast_arr.tolist()
 
         best_rmse = next((cv_results[k]["RMSE"] for k in ["GBM","HW","Ridge"]
                           if cv_results.get(k) and cv_results[k]["RMSE"]), None)
@@ -893,7 +902,8 @@ def show_page(session, selected_ym):
     • <b style="color:#fb923c;">GBM</b> = 여러 결정트리를 순서대로 쌓아 오차를 줄이는 트리부스팅 (XGBoost·LightGBM 동일 계열)<br>
     • <b style="color:#818cf8;">Ridge</b> = 과적합 방지 정규화가 추가된 선형 회귀<br>
     • <b style="color:#e2e8f0;">R²</b> 1에 가까울수록 우수 &nbsp;·&nbsp; <b style="color:#e2e8f0;">RMSE</b> 낮을수록 오차 작음<br>
-    • 신뢰구간: CV RMSE 기반 ±{ci_pct*100:.1f}% &nbsp;·&nbsp; 월 평균 기울기: <b style="color:#e2e8f0;">₩{trend_slope_disp:+,.0f}</b>
+    • 신뢰구간: CV RMSE 기반 ±{ci_pct*100:.1f}% &nbsp;·&nbsp; 월 평균 기울기: <b style="color:#e2e8f0;">₩{trend_slope_disp:+,.0f}</b><br>
+    • <b style="color:#fbbf24;">📌 CPI 하한선</b>: 한국 소비자물가 장기 평균 <b style="color:#fbbf24;">연 3.0%</b> 적용 (통계청) — 보험료는 물가연동 특성상 이 이하로 감소하지 않음
   </div>
 </div>
 """, unsafe_allow_html=True)
