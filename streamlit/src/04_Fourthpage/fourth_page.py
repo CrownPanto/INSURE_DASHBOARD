@@ -796,7 +796,7 @@ def show_page(session, selected_ym):
                 bgcolor=BG, borderpad=3,
             )
         fig_trend.update_layout(
-            height=300, width=560, plot_bgcolor=BG, paper_bgcolor=BG,
+            height=380, width=820, plot_bgcolor=BG, paper_bgcolor=BG,
             font=dict(color=TXT1),
             xaxis=dict(
                 type="date",
@@ -812,9 +812,7 @@ def show_page(session, selected_ym):
                         bgcolor="rgba(0,0,0,0)"),
             margin=dict(l=10, r=10, t=40, b=60),
         )
-        _c1, _c2, _c3 = st.columns([1, 6, 1])
-        with _c2:
-            st.plotly_chart(fig_trend, use_container_width=False)
+        st.plotly_chart(fig_trend, use_container_width=False)
 
         # ── 예측 모델 상세 expander ────────────────────────────────────
         with st.expander("📐 예측 모델 상세 — 모델 비교 & 검증 점수"):
@@ -836,30 +834,31 @@ def show_page(session, selected_ym):
                 r2_val   = res['R2'] if (res and res.get('R2') is not None) else None
                 r2_str   = f"{r2_val:.3f}" if r2_val is not None else "—"
                 r2_bar   = max(0, min(1, r2_val)) * 100 if r2_val is not None else 0
-                sel_bg   = "#0f2a1a" if selected else "#1e293b"
-                sel_bd   = "#34d399" if selected else "#334155"
-                star     = ' <span style="color:#fbbf24;font-size:11px;">★ 채택</span>' if selected else ""
+                sel_bg   = f"linear-gradient(135deg,{color}18,{color}06)" if selected else "#1e293b"
+                sel_bd   = color if selected else "#334155"
+                sel_bw   = "2px" if selected else "1px"
+                star     = f' <span style="background:{color};color:#000;font-size:10px;font-weight:800;padding:1px 8px;border-radius:20px;margin-left:6px;">★ 채택</span>' if selected else ""
                 cv_rows_html += f"""
-<div style="background:{sel_bg};border:1px solid {sel_bd};border-radius:8px;
-            padding:11px 14px;margin-bottom:7px;display:grid;
-            grid-template-columns:70px 1fr 110px 110px;align-items:center;gap:10px;">
-  <div style="background:{color}22;border:1px solid {color}55;border-radius:4px;
-              padding:3px 0;font-size:10px;color:{color};font-weight:700;
-              text-align:center;">{badge}</div>
-  <div>
-    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">{mkey}{star}</div>
-    <div style="color:#475569;font-size:10px;margin-top:2px;">{desc}</div>
+<div style="background:{sel_bg};border:{sel_bw} solid {sel_bd};border-left:4px solid {color};
+            border-radius:10px;padding:14px 18px;margin-bottom:10px;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+    <div style="background:{color}33;border:1px solid {color}88;border-radius:6px;
+                padding:4px 14px;font-size:12px;color:{color};font-weight:800;
+                white-space:nowrap;">{badge}</div>
+    <div style="color:#f1f5f9;font-size:16px;font-weight:700;">{mkey}{star}</div>
   </div>
-  <div style="text-align:right;">
-    <div style="color:#64748b;font-size:10px;margin-bottom:2px;">RMSE (CV)</div>
-    <div style="color:#e2e8f0;font-size:13px;font-weight:700;">{rmse_str}</div>
-  </div>
-  <div style="text-align:right;">
-    <div style="color:#64748b;font-size:10px;margin-bottom:2px;">R² (CV)</div>
-    <div style="color:#34d399;font-size:14px;font-weight:800;">{r2_str}</div>
-    <div style="background:#0f172a;border-radius:3px;height:5px;width:100%;margin-top:4px;">
-      <div style="background:linear-gradient(90deg,#34d399,#06b6d4);width:{r2_bar:.0f}%;
-                  height:5px;border-radius:3px;"></div>
+  <div style="color:#94a3b8;font-size:12px;margin-bottom:12px;line-height:1.6;">{desc}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;">
+      <div style="color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:5px;">RMSE (CV)</div>
+      <div style="color:#f1f5f9;font-size:18px;font-weight:800;">{rmse_str}</div>
+    </div>
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;">
+      <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:5px;">R² (CV)</div>
+      <div style="color:#f1f5f9;font-size:18px;font-weight:800;">{r2_str}</div>
+      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:7px;">
+        <div style="background:linear-gradient(90deg,#34d399,#06b6d4);width:{r2_bar:.0f}%;height:4px;border-radius:3px;"></div>
+      </div>
     </div>
   </div>
 </div>"""
@@ -880,48 +879,54 @@ def show_page(session, selected_ym):
                 w_desc   = " + ".join([f"{k} {int(w*100)}%" for (r,w),(k,*_) in
                                        zip(valid_ens, [("HW",), ("GBM",), ("Ridge",)])])
                 cv_rows_html += f"""
-<div style="background:linear-gradient(135deg,#0f2a20,#0f1e2a);border:2px solid #34d399;
-            border-radius:8px;padding:11px 14px;display:grid;
-            grid-template-columns:70px 1fr 110px 110px;align-items:center;gap:10px;">
-  <div style="background:#34d39922;border:1px solid #34d39966;border-radius:4px;
-              padding:3px 0;font-size:10px;color:#34d399;font-weight:700;text-align:center;">앙상블</div>
-  <div>
-    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">
-      {w_desc} <span style="color:#fbbf24;font-size:11px;">★ 최종 예측</span></div>
-    <div style="color:#475569;font-size:10px;margin-top:2px;">
-      TimeSeriesSplit 5-fold · 가중 평균 앙상블 · 순수 numpy 구현</div>
+<div style="background:linear-gradient(135deg,#052e16,#0c1a2e);border:2px solid #34d399;
+            border-left:4px solid #34d399;border-radius:10px;padding:14px 18px;margin-bottom:10px;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+    <div style="background:#34d39933;border:1px solid #34d39988;border-radius:6px;
+                padding:4px 14px;font-size:12px;color:#34d399;font-weight:800;">앙상블</div>
+    <div style="color:#f1f5f9;font-size:16px;font-weight:700;">{w_desc}</div>
+    <span style="background:#fbbf24;color:#000;font-size:10px;font-weight:800;
+                 padding:2px 10px;border-radius:20px;">★ 최종 예측</span>
   </div>
-  <div style="text-align:right;">
-    <div style="color:#64748b;font-size:10px;margin-bottom:2px;">RMSE (가중평균)</div>
-    <div style="color:#e2e8f0;font-size:13px;font-weight:700;">₩{ens_rmse:,.0f}</div>
-  </div>
-  <div style="text-align:right;">
-    <div style="color:#64748b;font-size:10px;margin-bottom:2px;">R² (가중평균)</div>
-    <div style="color:#34d399;font-size:14px;font-weight:800;">{ens_r2:.3f}</div>
-    <div style="background:#0f172a;border-radius:3px;height:5px;width:100%;margin-top:4px;">
-      <div style="background:linear-gradient(90deg,#34d399,#fbbf24);width:{ens_bar:.0f}%;
-                  height:5px;border-radius:3px;"></div>
+  <div style="color:#94a3b8;font-size:12px;margin-bottom:12px;line-height:1.6;">
+    TimeSeriesSplit 5-fold · 가중 평균 앙상블 · 순수 numpy 구현</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;">
+      <div style="color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:5px;">RMSE (가중평균)</div>
+      <div style="color:#f1f5f9;font-size:18px;font-weight:800;">₩{ens_rmse:,.0f}</div>
+    </div>
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;">
+      <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:5px;">R² (가중평균)</div>
+      <div style="color:#f1f5f9;font-size:18px;font-weight:800;">{ens_r2:.3f}</div>
+      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:7px;">
+        <div style="background:linear-gradient(90deg,#34d399,#fbbf24);width:{ens_bar:.0f}%;height:4px;border-radius:3px;"></div>
+      </div>
     </div>
   </div>
 </div>"""
             st.markdown(f"""
-<div style="margin-bottom:10px;">
-  <span style="color:#64748b;font-size:11px;">
-    📊 학습: {df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]} ({n_obs}개월) &nbsp;·&nbsp;
-    🔁 TimeSeriesSplit CV &nbsp;·&nbsp;
-    🎯 예측: {forecast_ym[0] if forecast_ym else "-"} ~ {forecast_ym[-1] if forecast_ym else "-"} (24개월)
+<div style="background:#1e293b;border:1px solid #475569;border-radius:8px;
+            padding:10px 16px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
+  <span style="color:#cbd5e1;font-size:12px;font-weight:600;">
+    📊 학습: <b style="color:#f1f5f9;">{df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]}</b> ({n_obs}개월)
+  </span>
+  <span style="color:#475569;">|</span>
+  <span style="color:#cbd5e1;font-size:12px;font-weight:600;">🔁 <b style="color:#f1f5f9;">TimeSeriesSplit CV</b></span>
+  <span style="color:#475569;">|</span>
+  <span style="color:#cbd5e1;font-size:12px;font-weight:600;">
+    🎯 예측: <b style="color:#f1f5f9;">{forecast_ym[0] if forecast_ym else "-"} ~ {forecast_ym[-1] if forecast_ym else "-"}</b> (24개월)
   </span>
 </div>
 {cv_rows_html}
-<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;
-            padding:12px 14px;margin-top:10px;">
-  <div style="color:#64748b;font-size:11px;line-height:1.9;">
-    <b style="color:#cbd5e1;">📌 해석 가이드</b><br>
+<div style="background:#1e293b;border:1.5px solid #475569;border-radius:10px;
+            padding:16px 20px;margin-top:10px;">
+  <div style="color:#fbbf24;font-size:13px;font-weight:800;margin-bottom:10px;">📌 해석 가이드</div>
+  <div style="font-size:12.5px;line-height:2.1;color:#cbd5e1;">
     • <b style="color:#06b6d4;">Holt-Winters</b> = 계절·추세·수준을 지수평활로 분리하는 시계열 모델 (SARIMA 동일 계열)<br>
     • <b style="color:#fb923c;">GBM</b> = 여러 결정트리를 순서대로 쌓아 오차를 줄이는 트리부스팅 (XGBoost·LightGBM 동일 계열)<br>
     • <b style="color:#818cf8;">Ridge</b> = 과적합 방지 정규화가 추가된 선형 회귀<br>
-    • <b style="color:#e2e8f0;">R²</b> 1에 가까울수록 우수 &nbsp;·&nbsp; <b style="color:#e2e8f0;">RMSE</b> 낮을수록 오차 작음<br>
-    • 신뢰구간: CV RMSE 기반 ±{ci_pct*100:.1f}% &nbsp;·&nbsp; 월 평균 기울기: <b style="color:#e2e8f0;">₩{trend_slope_disp:+,.0f}</b><br>
+    • <b style="color:#f1f5f9;">R²</b> 1에 가까울수록 우수 &nbsp;·&nbsp; <b style="color:#f1f5f9;">RMSE</b> 낮을수록 오차 작음<br>
+    • 신뢰구간: CV RMSE 기반 <b style="color:#f1f5f9;">±{ci_pct*100:.1f}%</b> &nbsp;·&nbsp; 월 평균 기울기: <b style="color:#f1f5f9;">₩{trend_slope_disp:+,.0f}</b><br>
     • <b style="color:#fbbf24;">📌 CPI 하한선</b>: 한국 소비자물가 장기 평균 <b style="color:#fbbf24;">연 3.0%</b> 적용 (통계청) — 보험료는 물가연동 특성상 이 이하로 감소하지 않음
   </div>
 </div>
