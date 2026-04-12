@@ -656,7 +656,7 @@ def show_page(session, selected_ym):
         # ─── TimeSeriesSplit CV (5-fold, numpy only) ─────────────────────
         def _cv(predict_fn, n_splits=5):
             fold = n_obs // (n_splits + 1)
-            rmses, r2s = [], []
+            rmses, r2s, mapes = [], [], []
             for i in range(n_splits):
                 te, ve = fold*(i+1), min(fold*(i+2), n_obs)
                 if te < 13 or ve <= te: continue
@@ -667,8 +667,13 @@ def show_page(session, selected_ym):
                 ss_tot = float(((a-a.mean())**2).sum())
                 rmses.append(float(np.sqrt(ss_res/len(a))))
                 r2s.append(float(1 - ss_res/ss_tot) if ss_tot > 0 else 0.0)
+                # MAPE: 실제값이 0이 아닌 항목만 계산
+                nonzero = a != 0
+                if nonzero.any():
+                    mapes.append(float(np.mean(np.abs((a[nonzero]-p[nonzero])/a[nonzero])) * 100))
             return (float(np.mean(rmses)) if rmses else None,
-                    float(np.mean(r2s))   if r2s   else None)
+                    float(np.mean(r2s))   if r2s   else None,
+                    float(np.mean(mapes)) if mapes else None)
 
         cv_results = {}
         hw_forecast = ridge_forecast = gbm_forecast = None
@@ -686,8 +691,8 @@ def show_page(session, selected_ym):
         X_sea_fut = X_future_f[:, 2:]
 
         if n_obs >= 12:
-            rmse_r, r2_r = _cv(lambda te, ve: _ridge_np(X_all[:te], y_all[:te], X_all[te:ve]))
-            cv_results["Ridge"] = {"RMSE": rmse_r, "R2": r2_r}
+            rmse_r, r2_r, mape_r = _cv(lambda te, ve: _ridge_np(X_all[:te], y_all[:te], X_all[te:ve]))
+            cv_results["Ridge"] = {"RMSE": rmse_r, "R2": r2_r, "MAPE": mape_r}
             ridge_forecast = _ridge_np(X_all, y_all, X_future_f)
 
             # GBM: 잔차 학습 → 미래잔차 예측 + 선형트렌드 합산
@@ -696,24 +701,34 @@ def show_page(session, selected_ym):
                 res_hat = _gbm_np(X_sea_in[:te], res_in, X_sea_in[te:ve])
                 return trend_in[te:ve] + res_hat
 
-            rmse_g, r2_g = _cv(_gbm_cv)
-            cv_results["GBM"] = {"RMSE": rmse_g, "R2": r2_g}
+            rmse_g, r2_g, mape_g = _cv(_gbm_cv)
+            cv_results["GBM"] = {"RMSE": rmse_g, "R2": r2_g, "MAPE": mape_g}
             gbm_resid_fut = _gbm_np(X_sea_in, resid_all, X_sea_fut)
             gbm_forecast  = trend_fut + gbm_resid_fut   # 트렌드 + 계절잔차
 
         if n_obs >= 24:
-            rmse_h, r2_h = _cv(lambda te, ve: _hw_np(y_all[:te], ve-te))
-            cv_results["HW"] = {"RMSE": rmse_h, "R2": r2_h}
+            rmse_h, r2_h, mape_h = _cv(lambda te, ve: _hw_np(y_all[:te], ve-te))
+            cv_results["HW"] = {"RMSE": rmse_h, "R2": r2_h, "MAPE": mape_h}
             hw_forecast = _hw_np(y_all, 24)
 
-        # 앙상블: HW 35% + GBM 45% + Ridge 20%
-        parts, weights = [], []
-        if hw_forecast    is not None: parts.append(hw_forecast);    weights.append(0.35)
-        if gbm_forecast   is not None: parts.append(gbm_forecast);   weights.append(0.45)
-        if ridge_forecast is not None: parts.append(ridge_forecast); weights.append(0.20)
-        if parts:
-            wt = sum(weights)
-            raw_forecast = sum(p*(w/wt) for p, w in zip(parts, weights))
+        # ── 최우수 단일 모델 자동 선택 (RMSE 기준) ─────────────────────
+        _candidates = [
+            ("GBM",   gbm_forecast,   cv_results.get("GBM")),
+            ("HW",    hw_forecast,    cv_results.get("HW")),
+            ("Ridge", ridge_forecast, cv_results.get("Ridge")),
+        ]
+        best_model_name     = None
+        best_model_rmse     = float("inf")
+        best_model_forecast = None
+        for _mn, _mf, _mr in _candidates:
+            if _mf is not None and _mr and _mr.get("RMSE"):
+                if _mr["RMSE"] < best_model_rmse:
+                    best_model_rmse     = _mr["RMSE"]
+                    best_model_name     = _mn
+                    best_model_forecast = _mf
+
+        if best_model_forecast is not None:
+            raw_forecast = best_model_forecast
         else:
             slp = float(trend_coef[0])
             raw_forecast = np.array([y_all[-1] + slp*(i+1) for i in range(24)])
@@ -727,10 +742,13 @@ def show_page(session, selected_ym):
         forecast_arr = np.maximum(raw_forecast, cpi_floor)
         forecast_vals = forecast_arr.tolist()
 
-        best_rmse = next((cv_results[k]["RMSE"] for k in ["GBM","HW","Ridge"]
-                          if cv_results.get(k) and cv_results[k]["RMSE"]), None)
-        ci_pct    = (best_rmse / np.mean(y_all)) if best_rmse else 0.06
+        ci_pct           = (best_model_rmse / np.mean(y_all)) if best_model_forecast is not None else 0.06
         trend_slope_disp = (forecast_vals[-1] - y_all[-1]) / 24
+        _model_label     = best_model_name or "GBM"
+        _model_rmse_disp = f"₩{best_model_rmse:,.0f}" if best_model_forecast is not None else "—"
+
+        # 모델별 배지 색상
+        _badge_color = {"GBM": "#fb923c", "HW": "#06b6d4", "Ridge": "#818cf8"}.get(_model_label, INDIGO)
 
         if forecast_vals:
             delta     = forecast_vals[-1] - y_all[-1]
@@ -742,12 +760,17 @@ def show_page(session, selected_ym):
             <div style="background:linear-gradient(135deg,#1e1b4b,#312e81);
                         border:1.5px solid #6366f1; border-radius:12px;
                         padding:16px 22px; margin-bottom:16px;">
-                <div style="color:#a5b4fc; font-size:10px; font-weight:700;
-                            text-transform:uppercase; letter-spacing:.1em; margin-bottom:8px;">
-                    📈 {end_label} 예측 보험료
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <span style="background:{_badge_color};color:#000;font-size:11px;
+                                 font-weight:800;padding:3px 12px;border-radius:20px;">
+                        🥇 {_model_label} 예측
+                    </span>
+                    <span style="color:#a5b4fc;font-size:11px;">
+                        RMSE {_model_rmse_disp} · {end_label} 예측 보험료
+                    </span>
                 </div>
                 <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
-                    <span style="color:#ffffff; font-size:26px; font-weight:900;
+                    <span style="color:#ffffff; font-size:28px; font-weight:900;
                                  letter-spacing:-.02em;">₩{forecast_vals[-1]:,.0f}</span>
                     <span style="color:#c7d2fe; font-size:14px; font-weight:600;">/ 월</span>
                     <span style="background:{'rgba(248,113,113,0.2)' if delta>0 else 'rgba(52,211,153,0.2)'};
@@ -770,9 +793,10 @@ def show_page(session, selected_ym):
                 line=dict(color="rgba(0,0,0,0)"), name="신뢰구간 90%", hoverinfo="skip",
             ))
             fig_trend.add_trace(go.Scatter(
-                x=forecast_ym, y=forecast_vals, mode="lines", name="예측 (Cortex ML)",
-                line=dict(color=YELLOW, width=2, dash="dash"),
-                hovertemplate="<b>%{x}</b><br>₩%{y:,.0f}<extra>예측</extra>",
+                x=forecast_ym, y=forecast_vals, mode="lines",
+                name=f"예측 ({_model_label} · RMSE {_model_rmse_disp})",
+                line=dict(color=_badge_color, width=2.5, dash="dash"),
+                hovertemplate=f"<b>%{{x}}</b><br>₩%{{y:,.0f}}<extra>{_model_label} 예측</extra>",
             ))
         fig_trend.add_trace(go.Scatter(
             x=df_trend["YEAR_MONTH"], y=df_trend["AVG_PREMIUM"],
@@ -796,7 +820,7 @@ def show_page(session, selected_ym):
                 bgcolor=BG, borderpad=3,
             )
         fig_trend.update_layout(
-            height=380, width=820, plot_bgcolor=BG, paper_bgcolor=BG,
+            height=380, plot_bgcolor=BG, paper_bgcolor=BG,
             font=dict(color=TXT1),
             xaxis=dict(
                 type="date",
@@ -812,7 +836,7 @@ def show_page(session, selected_ym):
                         bgcolor="rgba(0,0,0,0)"),
             margin=dict(l=10, r=10, t=40, b=60),
         )
-        st.plotly_chart(fig_trend, use_container_width=False)
+        st.plotly_chart(fig_trend, use_container_width=True)
 
         # ── 예측 모델 상세 expander ────────────────────────────────────
         with st.expander("📐 예측 모델 상세 — 모델 비교 & 검증 점수"):
@@ -831,8 +855,10 @@ def show_page(session, selected_ym):
             cv_rows_html = ""
             for mkey, badge, color, desc, res, selected in model_meta:
                 rmse_str = f"₩{res['RMSE']:,.0f}" if res else "—"
-                r2_val   = res['R2'] if (res and res.get('R2') is not None) else None
-                r2_str   = f"{r2_val:.3f}" if r2_val is not None else "—"
+                r2_val   = res['R2']   if (res and res.get('R2')   is not None) else None
+                mape_val = res['MAPE'] if (res and res.get('MAPE') is not None) else None
+                r2_str   = f"{r2_val:.3f}"  if r2_val   is not None else "—"
+                mape_str = f"{mape_val:.1f}%" if mape_val is not None else "—"
                 r2_bar   = max(0, min(1, r2_val)) * 100 if r2_val is not None else 0
                 sel_bg  = "#0f172a" if selected else "#1e293b"
                 sel_bd  = color if selected else "#475569"
@@ -849,19 +875,27 @@ def show_page(session, selected_ym):
   </div>
   <div style="color:#cbd5e1;font-size:12px;margin-bottom:14px;line-height:1.7;
               border-left:3px solid {color}66;padding-left:10px;">{desc}</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:.06em;
                   text-transform:uppercase;margin-bottom:6px;">RMSE (CV)</div>
-      <div style="color:#ffffff;font-size:20px;font-weight:800;">{rmse_str}</div>
+      <div style="color:#ffffff;font-size:18px;font-weight:800;">{rmse_str}</div>
+      <div style="color:#64748b;font-size:11px;margin-top:4px;">낮을수록 오차 적음</div>
     </div>
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.06em;
                   text-transform:uppercase;margin-bottom:6px;">R² (CV)</div>
-      <div style="color:#ffffff;font-size:20px;font-weight:800;">{r2_str}</div>
-      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:8px;">
+      <div style="color:#ffffff;font-size:18px;font-weight:800;">{r2_str}</div>
+      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:6px;">
         <div style="background:linear-gradient(90deg,#34d399,#06b6d4);width:{r2_bar:.0f}%;height:4px;border-radius:3px;"></div>
       </div>
+      <div style="color:#64748b;font-size:11px;margin-top:4px;">1에 가까울수록 우수</div>
+    </div>
+    <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
+      <div style="color:#fbbf24;font-size:11px;font-weight:700;letter-spacing:.06em;
+                  text-transform:uppercase;margin-bottom:6px;">MAPE (CV)</div>
+      <div style="color:#ffffff;font-size:18px;font-weight:800;">{mape_str}</div>
+      <div style="color:#64748b;font-size:11px;margin-top:4px;">실제 대비 % 오차</div>
     </div>
   </div>
 </div>"""
@@ -888,60 +922,46 @@ def show_page(session, selected_ym):
     <div style="background:#34d399;border-radius:6px;
                 padding:4px 14px;font-size:12px;color:#000;font-weight:800;">앙상블</div>
     <div style="color:#f1f5f9;font-size:16px;font-weight:700;">{w_desc}</div>
-    <span style="background:#fbbf24;color:#000;font-size:10px;font-weight:800;
-                 padding:2px 10px;border-radius:20px;">🎯 차트에 표시되는 예측값</span>
   </div>
-  <div style="background:#1e293b;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
-    <div style="color:#fbbf24;font-size:11px;font-weight:700;margin-bottom:4px;">💡 왜 앙상블인가?</div>
-    <div style="color:#cbd5e1;font-size:12px;line-height:1.7;">
-      단일 모델은 특정 패턴에 치우칠 수 있어요. 3개 모델의 예측을 가중 평균하면 각 모델의 약점을 서로 보완해 더 안정적인 예측이 가능합니다.<br>
-      <span style="color:#94a3b8;">TimeSeriesSplit 5-fold · 순수 numpy 구현</span>
-    </div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+  <div style="color:#cbd5e1;font-size:12px;margin-bottom:14px;line-height:1.7;
+              border-left:3px solid #34d39966;padding-left:10px;">
+    TimeSeriesSplit 5-fold · 가중 평균 앙상블 · 순수 numpy 구현</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:.06em;
                   text-transform:uppercase;margin-bottom:6px;">RMSE (가중평균)</div>
-      <div style="color:#ffffff;font-size:20px;font-weight:800;">₩{ens_rmse:,.0f}</div>
+      <div style="color:#ffffff;font-size:18px;font-weight:800;">₩{ens_rmse:,.0f}</div>
+      <div style="color:#64748b;font-size:11px;margin-top:4px;">낮을수록 오차 적음</div>
     </div>
     <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
       <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.06em;
                   text-transform:uppercase;margin-bottom:6px;">R² (가중평균)</div>
-      <div style="color:#ffffff;font-size:20px;font-weight:800;">{ens_r2:.3f}</div>
-      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:8px;">
+      <div style="color:#ffffff;font-size:18px;font-weight:800;">{ens_r2:.3f}</div>
+      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:6px;">
         <div style="background:linear-gradient(90deg,#34d399,#fbbf24);width:{ens_bar:.0f}%;height:4px;border-radius:3px;"></div>
       </div>
+      <div style="color:#64748b;font-size:11px;margin-top:4px;">1에 가까울수록 우수</div>
+    </div>
+    <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
+      <div style="color:#fbbf24;font-size:11px;font-weight:700;letter-spacing:.06em;
+                  text-transform:uppercase;margin-bottom:6px;">MAPE (가중평균)</div>
+      <div style="color:#ffffff;font-size:18px;font-weight:800;">{f"{sum(r['MAPE']*(w/w_tot) for r,w in [(r,w) for r,w in valid_ens if r.get('MAPE') is not None]):.1f}%" if any(r.get('MAPE') for r,_ in valid_ens) else "—"}</div>
+      <div style="color:#64748b;font-size:11px;margin-top:4px;">실제 대비 % 오차</div>
     </div>
   </div>
 </div>"""
             st.markdown(f"""
-<div style="background:linear-gradient(135deg,#1e1b4b,#0c1a2e);border:1px solid #6366f1;
-            border-radius:10px;padding:14px 18px;margin-bottom:16px;">
-  <div style="color:#a5b4fc;font-size:12px;font-weight:800;margin-bottom:8px;letter-spacing:.04em;">
-    🧪 모델 평가 구조 읽는 법
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-    <div style="display:flex;align-items:flex-start;gap:8px;">
-      <span style="background:#fb923c;color:#000;font-size:10px;font-weight:800;
-                   padding:2px 8px;border-radius:20px;white-space:nowrap;margin-top:1px;">🥇 단일 모델 최우수</span>
-      <span style="color:#cbd5e1;font-size:12px;line-height:1.6;">
-        3개 모델 중 <b style="color:#f1f5f9;">RMSE가 가장 낮은</b> 모델에 표시.<br>단독으로 쓸 때 가장 오차가 적음.
-      </span>
-    </div>
-    <div style="display:flex;align-items:flex-start;gap:8px;">
-      <span style="background:#fbbf24;color:#000;font-size:10px;font-weight:800;
-                   padding:2px 8px;border-radius:20px;white-space:nowrap;margin-top:1px;">🎯 차트에 표시되는 예측값</span>
-      <span style="color:#cbd5e1;font-size:12px;line-height:1.6;">
-        위 차트의 예측선은 <b style="color:#f1f5f9;">3개 모델을 가중 평균</b>한 값.<br>단일 모델보다 안정적.
-      </span>
-    </div>
-  </div>
-  <div style="margin-top:10px;padding-top:10px;border-top:1px solid #334155;
-              color:#94a3b8;font-size:11px;display:flex;flex-wrap:wrap;gap:14px;">
-    <span>📊 학습: <b style="color:#cbd5e1;">{df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]}</b> ({n_obs}개월)</span>
-    <span>🔁 <b style="color:#cbd5e1;">TimeSeriesSplit 5-fold CV</b></span>
-    <span>🎯 예측: <b style="color:#cbd5e1;">{forecast_ym[0] if forecast_ym else "-"} ~ {forecast_ym[-1] if forecast_ym else "-"}</b> (24개월)</span>
-  </div>
+<div style="background:#1e293b;border:1px solid #475569;border-radius:8px;
+            padding:10px 16px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
+  <span style="color:#cbd5e1;font-size:12px;font-weight:600;">
+    📊 학습: <b style="color:#f1f5f9;">{df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]}</b> ({n_obs}개월)
+  </span>
+  <span style="color:#475569;">|</span>
+  <span style="color:#cbd5e1;font-size:12px;font-weight:600;">🔁 <b style="color:#f1f5f9;">TimeSeriesSplit 5-fold CV</b></span>
+  <span style="color:#475569;">|</span>
+  <span style="color:#cbd5e1;font-size:12px;font-weight:600;">
+    🎯 예측: <b style="color:#f1f5f9;">{forecast_ym[0] if forecast_ym else "-"} ~ {forecast_ym[-1] if forecast_ym else "-"}</b> (24개월)
+  </span>
 </div>
 {cv_rows_html}
 <div style="background:#1e293b;border:1.5px solid #475569;border-radius:10px;
@@ -956,4 +976,5 @@ def show_page(session, selected_ym):
     • <b style="color:#fbbf24;">📌 CPI 하한선</b>: 한국 소비자물가 장기 평균 <b style="color:#fbbf24;">연 3.0%</b> 적용 (통계청) — 보험료는 물가연동 특성상 이 이하로 감소하지 않음
   </div>
 </div>
+
 """, unsafe_allow_html=True)
