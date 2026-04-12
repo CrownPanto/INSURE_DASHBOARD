@@ -962,6 +962,51 @@ def show_page(session, selected_ym):
 
         st.markdown(explain_html, unsafe_allow_html=True)
 
+    # ─── 7b. Cortex LLM 보험료 차이 인사이트 ───
+    if len(_comp_data) == 2 and not is_demo:
+        _r1 = _comp_data[comp_gu_a]
+        _r2 = _comp_data[comp_gu_b]
+        _prompt = (
+            "당신은 동산보험 요율 분석 전문가입니다. "
+            "아래 두 자치구의 보험료 데이터를 분석하고, "
+            "왜 가격이 다른지 비전문가도 이해할 수 있도록 2~3문장으로 설명하세요. "
+            "반드시 실제 수치(원, 점수)를 포함하고, "
+            "위험도와 자산 보호가액 중 어느 쪽이 주된 원인인지 명확히 밝히세요.\n\n"
+            "[예시 출력]\n"
+            "노원구는 위험도 41점으로 서초구(38점)보다 높습니다. "
+            "그러나 서초구 보험료가 월 41,261원으로 더 비싼 이유는 "
+            "아파트 평균 매매가가 서울 평균의 2배에 달해 "
+            "자산 보호가액이 크기 때문입니다. "
+            "INSURE는 이처럼 위험도와 자산 수준을 함께 반영해 최적 요율을 산출합니다.\n\n"
+            "[분석 대상]\n"
+            f"- {_r1['GU_NAME']}: 월 {_r1['ADJUSTED_PREMIUM_MONTHLY']:,.0f}원 | "
+            f"위험도 {_r1['COMPOSITE_RISK_SCORE']:.1f}점 | "
+            f"화재 {_r1['FIRE_RISK_SCORE']:.0f} | 도난 {_r1['THEFT_RISK_SCORE']:.0f} | "
+            f"기준보험료 {_r1['AVG_BASE_PREMIUM']:,.0f}원\n"
+            f"- {_r2['GU_NAME']}: 월 {_r2['ADJUSTED_PREMIUM_MONTHLY']:,.0f}원 | "
+            f"위험도 {_r2['COMPOSITE_RISK_SCORE']:.1f}점 | "
+            f"화재 {_r2['FIRE_RISK_SCORE']:.0f} | 도난 {_r2['THEFT_RISK_SCORE']:.0f} | "
+            f"기준보험료 {_r2['AVG_BASE_PREMIUM']:,.0f}원\n\n"
+            "[설명]"
+        )
+        try:
+            _llm_result = session.sql(
+                f"SELECT SNOWFLAKE.CORTEX.COMPLETE('mistral-large2', $${_prompt}$$)"
+            ).collect()[0][0]
+            st.markdown(f"""
+                <div style="background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(99,102,241,0.02));
+                            border:1.5px solid rgba(99,102,241,0.3);border-left:4px solid #6366f1;
+                            border-radius:12px;padding:16px 22px;margin-top:12px;">
+                    <div style="font-size:11px;color:#6366f1;font-weight:700;
+                                letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">
+                        ✨ AI 심층 분석 · Cortex LLM
+                    </div>
+                    <div style="color:#1e293b;font-size:14px;line-height:1.75;">{_llm_result}</div>
+                </div>
+            """, unsafe_allow_html=True)
+        except Exception:
+            pass  # 정적 explain_html이 이미 표시됨
+
     # ─── 8. 전체 데이터 테이블 ───
     with st.expander("📋 전체 25개 구 데이터 보기", expanded=False):
         show_df = agg_df[[
