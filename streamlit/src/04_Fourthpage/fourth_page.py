@@ -834,29 +834,32 @@ def show_page(session, selected_ym):
                 r2_val   = res['R2'] if (res and res.get('R2') is not None) else None
                 r2_str   = f"{r2_val:.3f}" if r2_val is not None else "—"
                 r2_bar   = max(0, min(1, r2_val)) * 100 if r2_val is not None else 0
-                sel_bg   = f"linear-gradient(135deg,{color}18,{color}06)" if selected else "#1e293b"
-                sel_bd   = color if selected else "#334155"
-                sel_bw   = "2px" if selected else "1px"
-                star     = f' <span style="background:{color};color:#000;font-size:10px;font-weight:800;padding:1px 8px;border-radius:20px;margin-left:6px;">★ 채택</span>' if selected else ""
+                sel_bg  = "#0f172a" if selected else "#1e293b"
+                sel_bd  = color if selected else "#475569"
+                sel_bw  = "2px" if selected else "1px"
+                star    = f' <span style="background:{color};color:#000;font-size:10px;font-weight:800;padding:2px 10px;border-radius:20px;margin-left:6px;">🥇 단일 모델 최우수</span>' if selected else ""
                 cv_rows_html += f"""
-<div style="background:{sel_bg};border:{sel_bw} solid {sel_bd};border-left:4px solid {color};
-            border-radius:10px;padding:14px 18px;margin-bottom:10px;">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-    <div style="background:{color}33;border:1px solid {color}88;border-radius:6px;
-                padding:4px 14px;font-size:12px;color:{color};font-weight:800;
+<div style="background:{sel_bg};border:{sel_bw} solid {sel_bd};border-left:5px solid {color};
+            border-radius:10px;padding:16px 20px;margin-bottom:10px;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+    <div style="background:{color};border-radius:6px;
+                padding:4px 14px;font-size:12px;color:#000;font-weight:800;
                 white-space:nowrap;">{badge}</div>
     <div style="color:#f1f5f9;font-size:16px;font-weight:700;">{mkey}{star}</div>
   </div>
-  <div style="color:#94a3b8;font-size:12px;margin-bottom:12px;line-height:1.6;">{desc}</div>
+  <div style="color:#cbd5e1;font-size:12px;margin-bottom:14px;line-height:1.7;
+              border-left:3px solid {color}66;padding-left:10px;">{desc}</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-    <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;">
-      <div style="color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:5px;">RMSE (CV)</div>
-      <div style="color:#f1f5f9;font-size:18px;font-weight:800;">{rmse_str}</div>
+    <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
+      <div style="color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:.06em;
+                  text-transform:uppercase;margin-bottom:6px;">RMSE (CV)</div>
+      <div style="color:#ffffff;font-size:20px;font-weight:800;">{rmse_str}</div>
     </div>
-    <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;">
-      <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:5px;">R² (CV)</div>
-      <div style="color:#f1f5f9;font-size:18px;font-weight:800;">{r2_str}</div>
-      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:7px;">
+    <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
+      <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.06em;
+                  text-transform:uppercase;margin-bottom:6px;">R² (CV)</div>
+      <div style="color:#ffffff;font-size:20px;font-weight:800;">{r2_str}</div>
+      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:8px;">
         <div style="background:linear-gradient(90deg,#34d399,#06b6d4);width:{r2_bar:.0f}%;height:4px;border-radius:3px;"></div>
       </div>
     </div>
@@ -879,43 +882,66 @@ def show_page(session, selected_ym):
                 w_desc   = " + ".join([f"{k} {int(w*100)}%" for (r,w),(k,*_) in
                                        zip(valid_ens, [("HW",), ("GBM",), ("Ridge",)])])
                 cv_rows_html += f"""
-<div style="background:linear-gradient(135deg,#052e16,#0c1a2e);border:2px solid #34d399;
-            border-left:4px solid #34d399;border-radius:10px;padding:14px 18px;margin-bottom:10px;">
+<div style="background:#0f172a;border:2px solid #34d399;border-left:5px solid #34d399;
+            border-radius:10px;padding:16px 20px;margin-bottom:10px;">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
-    <div style="background:#34d39933;border:1px solid #34d39988;border-radius:6px;
-                padding:4px 14px;font-size:12px;color:#34d399;font-weight:800;">앙상블</div>
+    <div style="background:#34d399;border-radius:6px;
+                padding:4px 14px;font-size:12px;color:#000;font-weight:800;">앙상블</div>
     <div style="color:#f1f5f9;font-size:16px;font-weight:700;">{w_desc}</div>
     <span style="background:#fbbf24;color:#000;font-size:10px;font-weight:800;
-                 padding:2px 10px;border-radius:20px;">★ 최종 예측</span>
+                 padding:2px 10px;border-radius:20px;">🎯 차트에 표시되는 예측값</span>
   </div>
-  <div style="color:#94a3b8;font-size:12px;margin-bottom:12px;line-height:1.6;">
-    TimeSeriesSplit 5-fold · 가중 평균 앙상블 · 순수 numpy 구현</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-    <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;">
-      <div style="color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:5px;">RMSE (가중평균)</div>
-      <div style="color:#f1f5f9;font-size:18px;font-weight:800;">₩{ens_rmse:,.0f}</div>
+  <div style="background:#1e293b;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+    <div style="color:#fbbf24;font-size:11px;font-weight:700;margin-bottom:4px;">💡 왜 앙상블인가?</div>
+    <div style="color:#cbd5e1;font-size:12px;line-height:1.7;">
+      단일 모델은 특정 패턴에 치우칠 수 있어요. 3개 모델의 예측을 가중 평균하면 각 모델의 약점을 서로 보완해 더 안정적인 예측이 가능합니다.<br>
+      <span style="color:#94a3b8;">TimeSeriesSplit 5-fold · 순수 numpy 구현</span>
     </div>
-    <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;">
-      <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:5px;">R² (가중평균)</div>
-      <div style="color:#f1f5f9;font-size:18px;font-weight:800;">{ens_r2:.3f}</div>
-      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:7px;">
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
+      <div style="color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:.06em;
+                  text-transform:uppercase;margin-bottom:6px;">RMSE (가중평균)</div>
+      <div style="color:#ffffff;font-size:20px;font-weight:800;">₩{ens_rmse:,.0f}</div>
+    </div>
+    <div style="background:#0a0f1a;border:1px solid #334155;border-radius:8px;padding:12px 16px;">
+      <div style="color:#86efac;font-size:11px;font-weight:700;letter-spacing:.06em;
+                  text-transform:uppercase;margin-bottom:6px;">R² (가중평균)</div>
+      <div style="color:#ffffff;font-size:20px;font-weight:800;">{ens_r2:.3f}</div>
+      <div style="background:#1e293b;border-radius:3px;height:4px;width:100%;margin-top:8px;">
         <div style="background:linear-gradient(90deg,#34d399,#fbbf24);width:{ens_bar:.0f}%;height:4px;border-radius:3px;"></div>
       </div>
     </div>
   </div>
 </div>"""
             st.markdown(f"""
-<div style="background:#1e293b;border:1px solid #475569;border-radius:8px;
-            padding:10px 16px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
-  <span style="color:#cbd5e1;font-size:12px;font-weight:600;">
-    📊 학습: <b style="color:#f1f5f9;">{df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]}</b> ({n_obs}개월)
-  </span>
-  <span style="color:#475569;">|</span>
-  <span style="color:#cbd5e1;font-size:12px;font-weight:600;">🔁 <b style="color:#f1f5f9;">TimeSeriesSplit CV</b></span>
-  <span style="color:#475569;">|</span>
-  <span style="color:#cbd5e1;font-size:12px;font-weight:600;">
-    🎯 예측: <b style="color:#f1f5f9;">{forecast_ym[0] if forecast_ym else "-"} ~ {forecast_ym[-1] if forecast_ym else "-"}</b> (24개월)
-  </span>
+<div style="background:linear-gradient(135deg,#1e1b4b,#0c1a2e);border:1px solid #6366f1;
+            border-radius:10px;padding:14px 18px;margin-bottom:16px;">
+  <div style="color:#a5b4fc;font-size:12px;font-weight:800;margin-bottom:8px;letter-spacing:.04em;">
+    🧪 모델 평가 구조 읽는 법
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div style="display:flex;align-items:flex-start;gap:8px;">
+      <span style="background:#fb923c;color:#000;font-size:10px;font-weight:800;
+                   padding:2px 8px;border-radius:20px;white-space:nowrap;margin-top:1px;">🥇 단일 모델 최우수</span>
+      <span style="color:#cbd5e1;font-size:12px;line-height:1.6;">
+        3개 모델 중 <b style="color:#f1f5f9;">RMSE가 가장 낮은</b> 모델에 표시.<br>단독으로 쓸 때 가장 오차가 적음.
+      </span>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:8px;">
+      <span style="background:#fbbf24;color:#000;font-size:10px;font-weight:800;
+                   padding:2px 8px;border-radius:20px;white-space:nowrap;margin-top:1px;">🎯 차트에 표시되는 예측값</span>
+      <span style="color:#cbd5e1;font-size:12px;line-height:1.6;">
+        위 차트의 예측선은 <b style="color:#f1f5f9;">3개 모델을 가중 평균</b>한 값.<br>단일 모델보다 안정적.
+      </span>
+    </div>
+  </div>
+  <div style="margin-top:10px;padding-top:10px;border-top:1px solid #334155;
+              color:#94a3b8;font-size:11px;display:flex;flex-wrap:wrap;gap:14px;">
+    <span>📊 학습: <b style="color:#cbd5e1;">{df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]}</b> ({n_obs}개월)</span>
+    <span>🔁 <b style="color:#cbd5e1;">TimeSeriesSplit 5-fold CV</b></span>
+    <span>🎯 예측: <b style="color:#cbd5e1;">{forecast_ym[0] if forecast_ym else "-"} ~ {forecast_ym[-1] if forecast_ym else "-"}</b> (24개월)</span>
+  </div>
 </div>
 {cv_rows_html}
 <div style="background:#1e293b;border:1.5px solid #475569;border-radius:10px;
