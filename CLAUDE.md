@@ -44,19 +44,20 @@ INSURE는 서울시 25개 구의 공공 안전 데이터 + GRANDATA 인구통계
 - **핵심 어필**: "같은 앱, 같은 보장, 다른 보험료" 비교 시연
 
 ### 2.5 Dashboard & UX (배점 보통)
-- Streamlit 5페이지 전체 실데이터 동작:
-  - P1: 서울시 보험료 지도 (GeoJSON 코로플레스 + KPI + IQR 이상치 산점도)
-  - P2: 맞춤 보험 시뮬레이터 (7단계 워터폴 차트)
-  - P3: AI 보험 상담 (RAG 367청크 + Cortex Search 기반 챗봇)
-  - P4: 엔진 상세 (레이더 + 히트맵 + 워터폴 3탭)
-  - P5: 시스템 현황 (V_SYSTEM_HEALTH, V_DYNAMIC_TABLE_STATUS)
-- 다크테마 + 그라데이션 카드 + Plotly 인터랙션
+- Streamlit 5페이지 (Andy V1.0 현황 — 2026-04-12 기준):
+  - P1 ✅: 서울시 보험료 지도 — KPI 3개 + Top3/Bottom3 + 버블차트(위험도 vs 보험료) + "같은 보험 다른 가격" 영등포 vs 서초 비교 + 25구 테이블. **GeoJSON 코로플레스 없음, 버블차트로 대체**
+  - P2 ✅: 맞춤 보험 시뮬레이터 (482줄) — 7단계 워터폴 차트, 4개 프리셋, 세그먼트 선택. 핵심 데모 페이지
+  - P3 ✅: AI 보험 상담 — `SP_ASK_INSURE_ADVISOR` SP 호출, 채팅 히스토리, 데모 폴백
+  - P4 ⚠️ **Andy 작업 중** (23줄): 레이더 탭만 구현, 보험료 산출 탭·미래 예측 탭은 플레이스홀더
+  - P5 ⚠️ **미완성** (12줄): 정적 테이블만 있음, V_SYSTEM_HEALTH 등 DB 쿼리 없음
+- 다크 사이드바 (#111827) + Plotly 인터랙션
 
 ### 2.6 Completeness & Security (배점 보통)
-- 5페이지 모두 동작 (v1에서는 2페이지만 완성이었음)
+- 5페이지 라우팅 동작 (P4/P5는 내용 미완성)
 - 비밀번호 st.secrets 전환 완료
 - SQL 인젝션 파라미터화 처리 완료
-- **개선 필요**: 자동 테스트 부재, calc_premium() DRY 위반(P2/P4 중복)
+- **해소됨**: calc_premium() DRY — utils.py:110에 단일 정의, P2에서 import 사용
+- **남은 이슈**: P4 보험료 산출/미래예측 탭, P5 헬스체크 DB 연동
 
 ---
 
@@ -76,10 +77,13 @@ INSURE는 서울시 25개 구의 공공 안전 데이터 + GRANDATA 인구통계
 
 ## 4. 수상 가능성을 높이는 추가 액션 (우선순위순)
 
-1. **Graph RAG → Streamlit 연동 완료** — Innovation +3~5점. "RAG를 넘어서는 지식 그래프 추론"이 차별점의 정점.
-2. **Cortex FORECAST 실행 확인** — Feature +3~5점. ML 함수가 실제로 예측 결과를 생성하면 AI/ML 활용 항목 강화.
-3. **Cortex Agent 통합** — Cortex Analyst + Cortex Search를 하나의 Agent로 묶으면 "AI가 알아서 SQL과 문서를 탐색" 시연 가능.
-4. **calc_premium() DRY 위반 해소** — P2(L178)와 P4(L854~874) 동일 로직 → 유틸 함수 통합
+> Andy 고유 영역(P4/P5 Streamlit, Snowflake 직접 배포)은 Claude가 직접 수정하지 않음.
+> Streamlit/Snowflake 코드 변경은 반드시 `feature_kijun` 브랜치 push → Andy 배포 경로로만.
+
+1. **Graph RAG → Streamlit 연동 완료** — Innovation +3~5점. P3 또는 P4에 Graph RAG 경로 시각화 UI 추가. Andy와 협의 필요.
+2. **P4 미래 예측 탭 Forecast 연결** — Feature +3~5점. `V_FIRE_FORECAST_V13` 쿼리 → Plotly 시계열. Andy 작업 중인 P4에 포함 예정.
+3. **Cortex Agent 통합 확인** — SQL 33번 완료. SP_ASK_INSURE_ADVISOR가 Cortex Agent 기반인지 확인 후 P3 설명 보완.
+4. ~~**calc_premium() DRY 위반 해소**~~ — **해소 완료** (utils.py:110 단일 정의)
 5. **시연 영상 30초 녹화** — 라이브 데모 실패 시 백업. "같은 보장, 다른 보험료" 비교 장면 핵심.
 
 ---
@@ -155,17 +159,24 @@ sql/
 
 ---
 
-## 8. Streamlit 앱 구조
+## 8. Streamlit 앱 구조 (Andy V1.0 — 2026-04-12 기준)
 
 ```
-streamlit/
-├── streamlit_app.py       # 메인 앱 (5페이지 라우팅)
-├── P1: 서울시 보험료 지도    # GeoJSON 코로플레스 + KPI
-├── P2: 맞춤 보험 시뮬레이터  # 7단계 워터폴 차트 (핵심 데모)
-├── P3: AI 보험 상담         # RAG + Cortex Search 챗봇
-├── P4: 엔진 상세            # 레이더/히트맵/워터폴 3탭
-└── P5: 시스템 현황          # 기술 스택 + 헬스체크
+streamlit_app.py              # 루트 진입점 (streamlit/src/main.py exec)
+streamlit/src/
+├── main.py                   # 세션, 사이드바, 라우팅 (5페이지)
+├── utils.py                  # calc_premium(), DISTRICT_PROFILES, SEGMENTS_A/B, PRESETS
+├── 01_Firstpage/first_page.py  # ✅ P1 — 버블차트+KPI+Top3/Bottom3 (105줄)
+├── 02_Secondpage/second_page.py # ✅ P2 — 7단계 워터폴 시뮬레이터 (482줄, 핵심 데모)
+├── 03_Thirdpage/third_page.py  # ✅ P3 — SP_ASK_INSURE_ADVISOR 챗봇 (21줄)
+├── 04_Fourthpage/fourth_page.py # ⚠️ P4 — 레이더만 완성, 나머지 탭 플레이스홀더 [Andy 작업 중]
+└── 05_Fifthpage/fifth_page.py  # ⚠️ P5 — 정적 테이블만, DB 쿼리 없음 (12줄)
 ```
+
+### 주요 데이터 흐름
+- P1/P2: `MART_DISTRICT_INSURANCE_SUMMARY` 직접 쿼리, 실패 시 `utils._demo_district_data()` 폴백
+- P3: `INSURE_DB.ANALYTICS.SP_ASK_INSURE_ADVISOR('{질문}')` 호출
+- P2 `calc_premium()`: `utils.py:110` 단일 정의 — 수정 시 utils.py만 변경하면 됨
 
 ---
 
@@ -182,9 +193,19 @@ streamlit/
 
 ## 10. 코드 작업 시 주의사항
 
+### 고유 규칙 (반드시 준수)
+- **Snowflake 및 Streamlit 코드를 직접 수정/배포하지 않는다**
+  - 모든 변경은 `feature_kijun` 브랜치 push로만 이루어짐
+  - 배포(Snowflake에 업로드)는 Andy 고유 권한
+- **P4 (`04_Fourthpage/`) 는 Andy 고유 영역** — 직접 수정 금지, 제안만 가능
+- Streamlit 앱에서 DB 연결 시 `st.secrets` 사용 (하드코딩 금지)
+
+### SQL 실행 규칙
 - SQL 파일은 반드시 번호 순서대로 실행 (의존성 있음)
-- 07번 번호가 중복됨 (yaml + sql) — 07_CORTEX_ANALYST.yaml 먼저 실행
+- 07번 번호가 중복됨 (yaml + sql) — `07_CORTEX_ANALYST.yaml` 먼저 실행
 - 28~29번은 결번 (통합 과정에서 건너뜀)
-- calc_premium() 로직이 P2와 P4에 중복 — 수정 시 양쪽 모두 반영 필요
-- Streamlit 앱에서 DB 연결 시 st.secrets 사용 (하드코딩 금지)
-- MART 테이블명은 정합성 확인 필수: MART_DISTRICT_INSURANCE_SUMMARY, V_FIRE_FORECAST_V13 등
+- MART 테이블명 정합성 확인 필수: `MART_DISTRICT_INSURANCE_SUMMARY`, `V_FIRE_FORECAST_V13`
+
+### 코딩 규칙
+- `calc_premium()` 단일 정의 위치: `streamlit/src/utils.py:110` — 수정 시 이곳만
+- P1 데모 폴백 데이터: `utils._demo_district_data()` (DB 실패 시 자동 전환)
