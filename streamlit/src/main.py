@@ -21,9 +21,18 @@ st.set_page_config(page_title="INSURE | 동산보험 동적 설계 엔진", page
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = "🗺️ 서울시 보험료 지도"
 
-# ─── 1. 성혁님의 가독성 해결 CSS 주입 ───
+# ─── 1. 글로벌 CSS (배경색 + 사이드바) ───
 st.markdown("""
     <style>
+    /* ── 전체 배경 ── */
+    .stApp,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stAppViewContainer"] > section,
+    [data-testid="stMain"],
+    [data-testid="block-container"] {
+        background-color: #f1f5f9 !important;
+    }
+    /* ── 사이드바 ── */
     [data-testid="stSidebar"] { background-color: #111827; }
     .menu-label { font-size: 0.85rem; font-weight: 600; color: #9CA3AF; margin: 1.5rem 0 0.5rem 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
     div.stButton > button[kind="secondary"] { background-color: transparent !important; border: none !important; text-align: left !important; color: #D1D5DB !important; width: 100% !important; display: flex !important; justify-content: flex-start !important; }
