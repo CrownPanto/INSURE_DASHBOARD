@@ -24,16 +24,15 @@ if 'current_page' not in st.session_state:
 # ─── 1. 글로벌 CSS (배경색 + 사이드바) ───
 st.markdown("""
     <style>
-    /* ── 전체 배경 ── */
-    .stApp,
-    [data-testid="stAppViewContainer"],
-    [data-testid="stAppViewContainer"] > section,
+    /* ── 메인 배경만 (사이드바 제외) ── */
+    .stApp { background-color: #dde3ec !important; }
+    [data-testid="stAppViewContainer"] > section[data-testid="stMain"],
     [data-testid="stMain"],
     [data-testid="block-container"] {
-        background-color: #f1f5f9 !important;
+        background-color: #dde3ec !important;
     }
-    /* ── 사이드바 ── */
-    [data-testid="stSidebar"] { background-color: #111827; }
+    /* ── 사이드바 유지 ── */
+    [data-testid="stSidebar"] { background-color: #111827 !important; }
     .menu-label { font-size: 0.85rem; font-weight: 600; color: #9CA3AF; margin: 1.5rem 0 0.5rem 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
     div.stButton > button[kind="secondary"] { background-color: transparent !important; border: none !important; text-align: left !important; color: #D1D5DB !important; width: 100% !important; display: flex !important; justify-content: flex-start !important; }
     div.stButton > button[kind="secondary"]:hover { background-color: #1F2937 !important; color: #FFFFFF !important; }
