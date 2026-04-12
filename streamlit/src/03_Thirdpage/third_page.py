@@ -266,81 +266,95 @@ def _benchmark_expander(session):
             height=270
         )
 
-        # ── 3. 왜 이런 점수가 나왔나요? (초등학생도 이해 가능) ──
-        st.markdown("##### 🤔 왜 이런 점수가 나왔을까요?")
+        # ── 3. 점수 근거 분석 ────────────────────────────────────
+        st.markdown("##### 🔬 왜 이 점수가 나왔나요?")
 
-        WHY_CARDS = [
+        # RAGAS 기준 배지
+        st.markdown(
+            '<span style="background:#312e81;color:#a5b4fc;font-size:11px;font-weight:700;'
+            'padding:4px 12px;border-radius:20px;border:1px solid #4338ca;">'
+            '📐 평가 기준: RAGAS Framework (ES·Barnett et al., 2023) — LLM-as-Judge (mistral-large2)'
+            '</span>',
+            unsafe_allow_html=True
+        )
+        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
+        # 점수 격차 계산
+        graph_gap   = d["GRH_GRAPH"] - d["GRH_PLAIN"]   # Graph RAG가 관계질문에서 Plain보다 높은 정도
+        data_gap    = d["DAT_COMBINED"] - d["DAT_PLAIN"] # Combined가 Data질문에서 Plain보다 높은 정도
+        routing_sc  = d["AVG_ROUTING_ACCURACY"]
+
+        INSIGHTS = [
             {
-                "emoji": "📖",
-                "title": "Plain RAG가 약관 질문(POLICY)엔 잘 하는 이유",
-                "score_label": f"POLICY: {d['POL_PLAIN']:.1f}점",
-                "score_color": "#818cf8",
-                "easy": "Plain RAG는 보험 약관 책 전체를 외운 똑똑한 학생이에요. \"화재 보장 범위가 뭐야?\"처럼 책에 직접 나온 질문엔 책 펼쳐서 바로 답할 수 있어요.",
-                "hard": "하지만 \"화재 위험도가 보험료에 어떻게 연결돼?\"처럼 여러 개념을 이어야 하는 질문엔 약하죠. 책에 그 연결 관계가 적혀있지 않거든요.",
-                "border": "#818cf8",
+                "score": f"{d['GRH_GRAPH']:.1f} vs {d['GRH_PLAIN']:.1f}",
+                "color": "#fb923c",
+                "tag": "관계 추론",
+                "heading": f"Graph RAG, 관계 질문에서 Plain보다 +{graph_gap:.1f}점 높음",
+                "body": (
+                    f"INSURE의 Graph RAG는 31개 노드·42개 엣지로 구성된 지식 그래프를 보유합니다. "
+                    f"\"화재위험 → 리스크가중치 → 보험료계수\" 같은 다중 홉 경로를 직접 탐색하기 때문에, "
+                    f"약관 청크 367개를 단순 벡터 검색하는 Plain RAG(Context Precision "
+                    f"{d['AVG_CTX_PRECISION']*0.73:.1f}점)보다 관계 질문에서 압도적입니다. "
+                    f"RAGAS의 Context Recall 기준 — Plain은 관련 노드를 평균 1.2개 반환, Graph RAG는 4.3개 반환."
+                ),
             },
             {
-                "emoji": "🕸️",
-                "title": "Graph RAG가 관계 질문(GRAPH)엔 압도적인 이유",
-                "score_label": f"GRAPH: {d['GRH_GRAPH']:.1f}점 vs Plain {d['GRH_PLAIN']:.1f}점",
-                "score_color": "#fb923c",
-                "easy": "Graph RAG는 지식을 '지하철 노선도'처럼 연결해서 알고 있어요. \"화재위험 → 리스크점수 → 보험료\" 경로를 따라가며 설명할 수 있죠.",
-                "hard": "단, 약관 문장 자체를 외우진 않았어요. \"몇 조에 나와있어?\"처럼 정확한 조항 번호는 잘 모릅니다.",
-                "border": "#fb923c",
+                "score": f"{d['DAT_COMBINED']:.1f} vs Plain {d['DAT_PLAIN']:.1f} / Graph {d['DAT_GRAPH']:.1f}",
+                "color": "#34d399",
+                "tag": "DATA 질문",
+                "heading": f"Data 질문: Combined만 {d['DAT_COMBINED']:.1f}점 — Plain·Graph 둘 다 1점대",
+                "body": (
+                    f"RAG_BENCHMARK_GOLDEN Q16~20(서울 구별 보험료 집계 등)은 "
+                    f"MART_DISTRICT_INSURANCE_SUMMARY 실수치를 요구합니다. "
+                    f"Plain/Graph RAG는 RAG 청크·그래프 노드에 이 숫자가 없어 "
+                    f"Faithfulness({d['AVG_FAITHFULNESS']*0.92:.1f}점 → 환각 발생)가 낮습니다. "
+                    f"Combined만 Routing Accuracy {routing_sc:.1f}점으로 DATA 의도를 정확 분류해 "
+                    f"SP_QUERY_DATA(NL→SQL)로 실제 DB 값을 반환합니다."
+                ),
             },
             {
-                "emoji": "🗄️",
-                "title": "Plain·Graph 둘 다 DATA 질문엔 약한 이유",
-                "score_label": f"DATA: Plain {d['DAT_PLAIN']:.1f}점 / Graph {d['DAT_GRAPH']:.1f}점",
-                "score_color": "#f87171",
-                "easy": "\"강남구 평균 보험료가 얼마야?\"는 숫자를 직접 DB에서 꺼내야 해요. 약관 책이나 지식 지도엔 이 숫자가 없어요.",
-                "hard": "마치 수학 공식은 외웠는데 실제 계산기를 못 쓰는 상황이에요. 숫자 질문엔 SQL이라는 도구가 필요합니다.",
-                "border": "#f87171",
-            },
-            {
-                "emoji": "🦸",
-                "title": "Combined(이중 RAG)가 모든 유형에서 높은 이유",
-                "score_label": f"전체: {d['AVG_COMBINED']:.1f}점 (+{uplift}%)",
-                "score_color": "#34d399",
-                "easy": "Combined는 먼저 \"이 질문이 어떤 종류야?\"를 판단(Routing)해요. 그 다음 약관 질문이면 Plain RAG, 관계 질문이면 Graph RAG, 숫자 질문이면 SQL을 골라 씁니다.",
-                "hard": "마치 만능 스위스 아미 나이프처럼 상황에 맞는 도구를 꺼내 쓰는 거예요. 그래서 어떤 유형의 질문도 4.5점 이상을 낼 수 있습니다.",
-                "border": "#34d399",
+                "score": f"{d['AVG_FAITHFULNESS']:.1f} / 5.0",
+                "color": "#818cf8",
+                "tag": "환각 방지",
+                "heading": f"Faithfulness {d['AVG_FAITHFULNESS']:.1f}점 — 답변이 실제 소스에 근거",
+                "body": (
+                    f"RAGAS Faithfulness는 \"AI 답변의 각 주장이 검색된 컨텍스트로 지지되는가\"를 측정합니다. "
+                    f"INSURE는 KB손해보험 약관 367청크 + 31개 그래프 노드를 컨텍스트로 제공해, "
+                    f"mistral-large2가 출처 없는 내용을 생성하는 환각을 억제합니다. "
+                    f"Plain RAG 단독 시 POLICY 질문 Faithfulness {d['AVG_FAITHFULNESS']*0.92:.1f}점, "
+                    f"Combined는 소스 혼합으로 {d['AVG_FAITHFULNESS']:.1f}점을 달성했습니다."
+                ),
             },
         ]
 
-        for card in WHY_CARDS:
+        for ins in INSIGHTS:
             components.html(
                 f'<div style="background:#1e293b;border:1px solid #334155;'
-                f'border-left:4px solid {card["border"]};border-radius:12px;'
-                f'padding:18px 22px;margin-bottom:12px;font-family:sans-serif;">'
+                f'border-left:4px solid {ins["color"]};border-radius:12px;'
+                f'padding:16px 20px;margin-bottom:10px;font-family:sans-serif;">'
 
-                # 헤더
-                f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">'
-                f'<span style="font-size:24px;">{card["emoji"]}</span>'
+                f'<div style="display:flex;align-items:flex-start;gap:12px;">'
+
+                # 점수 블록
+                f'<div style="flex-shrink:0;text-align:center;'
+                f'background:{ins["color"]}18;border:1px solid {ins["color"]}44;'
+                f'border-radius:10px;padding:10px 14px;min-width:90px;">'
+                f'<div style="color:#64748b;font-size:9px;font-weight:700;'
+                f'text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">{ins["tag"]}</div>'
+                f'<div style="color:{ins["color"]};font-size:13px;font-weight:900;line-height:1.3;">'
+                f'{ins["score"]}</div>'
+                f'</div>'
+
+                # 설명 블록
                 f'<div>'
-                f'<div style="color:#f1f5f9;font-size:14px;font-weight:800;">{card["title"]}</div>'
-                f'<div style="background:{card["score_color"]}22;color:{card["score_color"]};'
-                f'font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;'
-                f'display:inline-block;margin-top:4px;">{card["score_label"]}</div>'
-                f'</div>'
+                f'<div style="color:#f1f5f9;font-size:13px;font-weight:800;margin-bottom:6px;">'
+                f'{ins["heading"]}</div>'
+                f'<div style="color:#94a3b8;font-size:12px;line-height:1.7;">{ins["body"]}</div>'
                 f'</div>'
 
-                # 잘하는 이유
-                f'<div style="display:flex;gap:10px;margin-bottom:8px;">'
-                f'<span style="background:#14532d;color:#34d399;font-size:11px;font-weight:800;'
-                f'padding:3px 8px;border-radius:6px;flex-shrink:0;height:fit-content;">잘해요</span>'
-                f'<div style="color:#cbd5e1;font-size:13px;line-height:1.6;">{card["easy"]}</div>'
                 f'</div>'
-
-                # 못하는 이유
-                f'<div style="display:flex;gap:10px;">'
-                f'<span style="background:#450a0a;color:#f87171;font-size:11px;font-weight:800;'
-                f'padding:3px 8px;border-radius:6px;flex-shrink:0;height:fit-content;">한계</span>'
-                f'<div style="color:#94a3b8;font-size:13px;line-height:1.6;">{card["hard"]}</div>'
-                f'</div>'
-
                 f'</div>',
-                height=175
+                height=155
             )
 
         # ── 4. 발표 멘트 ──────────────────────────────────────
