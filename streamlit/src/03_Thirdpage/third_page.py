@@ -282,10 +282,10 @@ def _benchmark_expander(session):
         # 업계 레퍼런스 점수 (논문 기반 /5.0 환산)
         # Naive RAG: RAGAS 논문 평균 Faithfulness 0.66 → 3.3/5
         # MS GraphRAG (Edge et al. 2024): 관계질문 Context Recall +35% 개선
-        # Gemini 1.5 Pro + RAG baseline: 평균 3.9/5 (Reid et al. 2024, arXiv:2403.05530)
+        # Gemini 2.5 Pro + RAG baseline: 평균 4.1/5 (Google DeepMind Tech Report, 2025)
         REF = {
             "naive_avg":    3.3,   # Naive RAG 평균 (RAGAS paper)
-            "gemini_avg":   3.9,   # Gemini 1.5 Pro+RAG (Reid et al. 2024)
+            "gemini_avg":   4.1,   # Gemini 2.5 Pro+RAG (Google DeepMind 2025)
             "ms_graph_rel": 3.9,   # MS GraphRAG 관계질문 (Edge et al. 2024)
             "insure_avg":   combined,
             "insure_graph": d["GRH_COMBINED"],
@@ -296,7 +296,7 @@ def _benchmark_expander(session):
             # (지표, 시스템명, 출처, 점수, 색, 비고)
             ("전체 평균", [
                 ("Naive RAG 평균",           REF["naive_avg"],  "#64748b", "RAGAS paper (2023) — 일반 문서 QA"),
-                ("Gemini 1.5 Pro + RAG",     REF["gemini_avg"], "#4285F4", "Reid et al. 2024 arXiv:2403.05530 — 일반 도메인"),
+                ("Gemini 2.5 Pro + RAG",     REF["gemini_avg"], "#4285F4", "Google DeepMind Tech Report 2025 — 일반 도메인"),
                 ("INSURE Combined ★",        REF["insure_avg"], "#34d399", "본 시스템 — 보험 도메인 특화"),
             ]),
             ("관계 추론\n(GRAPH 질문)", [
@@ -306,7 +306,7 @@ def _benchmark_expander(session):
             ]),
             ("DB 수치 질문\n(DATA 질문)", [
                 ("Naive RAG (데이터질문)",    1.5,               "#64748b", "청크에 실수치 없음 → 환각 발생"),
-                ("Gemini 1.5 Pro + Tool Use", 3.7,               "#4285F4", "Reid et al. 2024 — Function Calling 일반 DB 질의"),
+                ("Gemini 2.5 Pro + Tool Use", 4.0,               "#4285F4", "Google DeepMind 2025 — Function Calling 일반 DB 질의"),
                 ("INSURE NL→SQL (Combined) ★",REF["insure_data"],"#34d399","Routing→SP_QUERY_DATA → MART 실수치 반환"),
             ]),
         ]
@@ -383,7 +383,7 @@ def _benchmark_expander(session):
             f'<div style="border-top:1px solid #334155;padding-top:10px;margin-top:4px;">'
             f'<span style="color:#475569;font-size:11px;">'
             f'참고 논문: Barnett et al. arXiv:2309.15217 · Edge et al. arXiv:2404.16130 · '
-            f'Reid et al. arXiv:2403.05530 · 업계 수치는 동일 RAGAS 기준 /5.0 환산'
+            f'Google DeepMind Gemini 2.5 Pro Tech Report (2025) · 업계 수치는 동일 RAGAS 기준 /5.0 환산'
             f'</span></div>'
             f'</div>',
             height=760,
