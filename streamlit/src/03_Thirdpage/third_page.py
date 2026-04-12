@@ -314,46 +314,71 @@ def _benchmark_expander(session):
         blocks = ""
         for section_title, rows in COMPARE_ROWS:
             title_lines = section_title.split("\n")
-            title_html = (f'<div style="color:#f1f5f9;font-size:14px;font-weight:800;">{title_lines[0]}</div>'
-                         f'<div style="color:#64748b;font-size:11px;">{title_lines[1]}</div>'
-                         if len(title_lines) > 1
-                         else f'<div style="color:#f1f5f9;font-size:14px;font-weight:800;">{title_lines[0]}</div>')
+            title_html = (
+                f'<div style="color:#e2e8f0;font-size:15px;font-weight:800;'
+                f'border-left:4px solid #818cf8;padding-left:10px;">{title_lines[0]}'
+                f'<span style="color:#64748b;font-size:12px;font-weight:400;margin-left:8px;">'
+                f'{title_lines[1] if len(title_lines)>1 else ""}</span></div>'
+            )
 
             row_html = ""
             for sys_name, score, color, note in rows:
                 is_ours = "★" in sys_name
-                bar_w   = int(score / 5 * 200)
-                bg      = "#0f2318" if is_ours else "#1a2538"
-                border  = f"border:1px solid {color}55;" if is_ours else "border:1px solid #243347;"
+                bar_w   = int(score / 5 * 180)
+                name_clean = sys_name.replace(" ★", "")
+
+                if is_ours:
+                    bg         = f"linear-gradient(90deg,{color}18,{color}08)"
+                    border_css = f"border:2px solid {color}88;"
+                    name_color = color
+                    note_color = "#cbd5e1"
+                    score_size = "20px"
+                    star_html  = f'<span style="color:#fbbf24;margin-right:4px;">★</span>'
+                else:
+                    bg         = "#243347"
+                    border_css = "border:1px solid #334155;"
+                    name_color = "#cbd5e1"
+                    note_color = "#94a3b8"
+                    score_size = "17px"
+                    star_html  = ""
+
                 row_html += (
-                    f'<div style="display:grid;grid-template-columns:200px 240px 50px 1fr;'
-                    f'align-items:center;gap:12px;padding:11px 16px;'
-                    f'background:{bg};{border}border-radius:8px;margin-bottom:6px;">'
+                    f'<div style="display:grid;grid-template-columns:210px 190px 56px 1fr;'
+                    f'align-items:center;gap:14px;padding:13px 18px;'
+                    f'background:{bg};{border_css}border-radius:10px;margin-bottom:8px;">'
 
-                    f'<div style="color:{"#34d399" if is_ours else "#94a3b8"};'
-                    f'font-size:13px;font-weight:{"800" if is_ours else "500"};">'
-                    f'{"★ " if is_ours else ""}{sys_name.replace(" ★","")}</div>'
+                    # 시스템 이름
+                    f'<div style="color:{name_color};font-size:14px;'
+                    f'font-weight:{"800" if is_ours else "600"};">'
+                    f'{star_html}{name_clean}</div>'
 
-                    f'<div style="background:#334155;border-radius:4px;height:10px;">'
-                    f'<div style="width:{bar_w}px;height:100%;background:{color};'
-                    f'border-radius:4px;"></div></div>'
+                    # 바
+                    f'<div style="background:#1e293b;border-radius:6px;height:12px;'
+                    f'border:1px solid #334155;">'
+                    f'<div style="width:{bar_w}px;max-width:100%;height:100%;'
+                    f'background:{color};border-radius:6px;opacity:{"1" if is_ours else "0.7"};"></div>'
+                    f'</div>'
 
-                    f'<div style="color:{color};font-size:16px;font-weight:900;">{score:.1f}</div>'
+                    # 점수
+                    f'<div style="color:{color};font-size:{score_size};'
+                    f'font-weight:900;text-align:center;">{score:.1f}</div>'
 
-                    f'<div style="color:#64748b;font-size:11px;">{note}</div>'
+                    # 설명
+                    f'<div style="color:{note_color};font-size:12px;line-height:1.5;">{note}</div>'
+
                     f'</div>'
                 )
 
             blocks += (
-                f'<div style="margin-bottom:18px;">'
-                f'<div style="margin-bottom:8px;">{title_html}</div>'
+                f'<div style="margin-bottom:22px;">'
+                f'<div style="margin-bottom:10px;">{title_html}</div>'
                 + row_html +
                 f'</div>'
             )
 
         components.html(
-            f'<div style="background:#1e293b;border:1px solid #334155;border-radius:14px;'
-            f'padding:20px 20px 12px;font-family:sans-serif;">'
+            f'<div style="background:#1a2538;border:1px solid #334155;border-radius:14px;'
+            f'padding:22px 22px 14px;font-family:-apple-system,sans-serif;">'
             + blocks +
             f'<div style="border-top:1px solid #334155;padding-top:10px;margin-top:4px;">'
             f'<span style="color:#475569;font-size:11px;">'
