@@ -435,19 +435,127 @@ def show_page(session, selected_ym):
         st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
         with st.expander("📝 산출 공식 상세"):
-            st.markdown(f"""
-| 단계 | 항목 | 값 |
-|:----:|------|---:|
-| ① | 기본 손해율 | ₩{res['pure']:,.0f} |
-| ② | 경험 보정 (소득 가중) | ₩{res['experience']:,.0f} |
-| ③ | 리스크 계수 ×**{res['risk_mult']:.2f}** | ₩{res['risk_classified']:,.0f} |
-| ④ | 사업비 로딩 (51%) | ₩{res['loaded']:,.0f} |
-| ⑤ | 신뢰도 조정 | ₩{res['credible']:,.0f} |
-| ⑥ | 세그먼트 보정 ×**{res['segment_mult']:.2f}** | ₩{res['segment_adjusted']:,.0f} |
-| **⑦** | **최종 보험료** | **₩{res['final']:,.0f}** |
+            # 단계 데이터 정의
+            formula_steps = [
+                ("①", "기본 손해율",   "화재빈도 × 기대손해액",
+                 f"({res['fire_freq']:.5f} × ₩15,000,000)",
+                 res["pure"],           0,                                    INDIGO),
+                ("②", "경험 보정",     "순보험료 × 소득 가중치",
+                 f"× {income/50:.2f} (소득 {income}백만원 / 기준 50)",
+                 res["experience"],     res["experience"] - res["pure"],      INDIGO),
+                ("③", "리스크 계수",   f"비선형 리스크 커브 적용",
+                 f"× {res['risk_mult']:.3f}  (위험점수 {res['risk_score']:.1f})",
+                 res["risk_classified"],res["risk_classified"] - res["experience"], ORANGE),
+                ("④", "사업비 로딩",   "운영비 · 모집수수료 반영",
+                 f"× 1.51  (로딩율 51%)",
+                 res["loaded"],         res["loaded"] - res["risk_classified"], ORANGE),
+                ("⑤", "신뢰도 조정",   "통계 신뢰구간 보정 (현재 1:1)",
+                 "credibility weight = 1.00",
+                 res["credible"],       res["credible"] - res["loaded"],      INDIGO),
+                ("⑥", "세그먼트 보정", "가구 유형 × 자산 유형 계수",
+                 f"× {SEGMENTS_A[seg_a_key]['mult']:.2f} × {SEGMENTS_B[seg_b_key]['mult']:.2f} = {res['segment_mult']:.2f}",
+                 res["segment_adjusted"], res["segment_adjusted"] - res["credible"], INDIGO),
+                ("⑦", "최종 보험료",   "월소득 부담 상한 적용",
+                 f"cap = {income}M × 2% / 12 = ₩{income*1000000*0.02/12:,.0f}",
+                 res["final"],          None,                                  GREEN),
+            ]
 
-> 리스크 커브: 점수 < 25 → `0.85 + (x/25)^0.7 × 0.15` | 25~40 → `1.00 + (x-25)/100` | 40+ → 비선형 가속
-            """)
+            # 최대 델타 찾기 (바 너비 계산용)
+            max_delta = max(abs(s[5]) for s in formula_steps if s[5] is not None and s[5] != 0) or 1
+
+            rows_html = ""
+            for num, name, desc, formula, cumul, delta, color in formula_steps:
+                is_final = (color == GREEN)
+
+                # 델타 배지
+                if delta is None or is_final:
+                    delta_badge = ""
+                    bar_html    = ""
+                elif abs(delta) < 1:
+                    delta_badge = '<span style="background:#1e293b;color:#64748b;font-size:10px;padding:2px 8px;border-radius:20px;">변동없음</span>'
+                    bar_html    = ""
+                else:
+                    sign     = "+" if delta >= 0 else "−"
+                    dc       = "#f87171" if delta >= 0 else "#34d399"
+                    bar_w    = min(int(abs(delta) / max_delta * 120), 120)
+                    delta_badge = f'<span style="background:{dc}22;color:{dc};font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;border:1px solid {dc}44;">{sign}&#8361;{abs(delta):,.0f}</span>'
+                    bar_html = f'<div style="width:{bar_w}px;height:3px;background:{dc};border-radius:2px;margin-top:4px;opacity:0.7;"></div>'
+
+                # 누적값 바 (전체 대비 비율)
+                cum_w = min(int(cumul / res["final"] * 180), 180)
+
+                row_bg   = "linear-gradient(90deg,#052e16 0%,#0a3828 100%)" if is_final else "#1e293b"
+                num_bg   = color
+                row_border = f"border-left:3px solid {color};"
+
+                rows_html += (
+                    f'<div style="display:grid;grid-template-columns:40px 1fr 1fr 160px;'
+                    f'align-items:center;gap:0;padding:12px 16px;'
+                    f'background:{row_bg};{row_border}'
+                    f'border-bottom:1px solid #1e293b;">'
+
+                    # 번호 뱃지
+                    f'<div style="background:{num_bg};color:#fff;font-size:11px;font-weight:800;'
+                    f'width:28px;height:28px;border-radius:50%;display:flex;'
+                    f'align-items:center;justify-content:center;">{num}</div>'
+
+                    # 항목명 + 설명
+                    f'<div style="padding-left:12px;">'
+                    f'<div style="color:#f1f5f9;font-size:13px;font-weight:700;">{name}</div>'
+                    f'<div style="color:#64748b;font-size:10px;margin-top:2px;">{desc}</div>'
+                    f'<div style="color:#475569;font-size:10px;font-family:monospace;margin-top:3px;">{formula}</div>'
+                    f'</div>'
+
+                    # 델타 배지 + 바
+                    f'<div style="padding-left:8px;">'
+                    f'{delta_badge}'
+                    f'{bar_html}'
+                    f'</div>'
+
+                    # 누적 보험료
+                    f'<div style="text-align:right;padding-right:4px;">'
+                    f'<div style="color:{color};font-size:{"16px" if is_final else "14px"};'
+                    f'font-weight:{"900" if is_final else "700"};">&#8361;{cumul:,.0f}</div>'
+                    f'<div style="height:4px;background:{color}33;border-radius:2px;margin-top:5px;">'
+                    f'<div style="width:{cum_w}px;max-width:100%;height:100%;background:{color};border-radius:2px;"></div>'
+                    f'</div>'
+                    f'<div style="color:#475569;font-size:9px;margin-top:3px;">{"최종 월보험료" if is_final else "누적 합계"}</div>'
+                    f'</div>'
+
+                    f'</div>'
+                )
+
+            # 리스크 커브 공식 Footer
+            curve_html = (
+                f'<div style="background:#0f172a;padding:12px 16px;border-top:1px solid #334155;'
+                f'font-size:10px;color:#64748b;font-family:monospace;line-height:1.8;">'
+                f'<span style="color:#818cf8;font-weight:700;">리스크 커브 v1.3</span> &nbsp;|&nbsp;'
+                f'score &lt; 25 &rarr; <span style="color:#e2e8f0;">0.85 + (x/25)^0.7 &times; 0.15</span> &nbsp;|&nbsp;'
+                f'25~40 &rarr; <span style="color:#e2e8f0;">1.00 + (x-25)/100</span> &nbsp;|&nbsp;'
+                f'40~60 &rarr; <span style="color:#fb923c;">1.15 + ((x-40)/20)^1.5 &times; 0.35</span> &nbsp;|&nbsp;'
+                f'60+ &rarr; <span style="color:#f87171;">비선형 가속 (최대 2.50)</span>'
+                f'</div>'
+            )
+
+            # 헤더
+            header_html = (
+                f'<div style="display:grid;grid-template-columns:40px 1fr 1fr 160px;'
+                f'gap:0;padding:10px 16px;background:#0f172a;'
+                f'border-bottom:2px solid #334155;">'
+                f'<div style="color:#475569;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">단계</div>'
+                f'<div style="color:#475569;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding-left:12px;">항목 / 산출식</div>'
+                f'<div style="color:#475569;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding-left:8px;">증감</div>'
+                f'<div style="color:#475569;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:right;padding-right:4px;">누적 보험료</div>'
+                f'</div>'
+            )
+
+            full_html = (
+                f'<div style="background:#1e293b;border:1px solid #334155;'
+                f'border-radius:14px;overflow:hidden;font-family:sans-serif;">'
+                + header_html + rows_html + curve_html +
+                f'</div>'
+            )
+            components.html(full_html, height=540, scrolling=False)
 
     # ────────────────────────────────────────────────────────────
     # TAB 3: 미래 예측
