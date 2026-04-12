@@ -574,7 +574,7 @@ def show_page(session, selected_ym):
             df_trend["YEAR_MONTH"].astype(str).str[4:6]
         )
 
-        # ── 앙상블 예측: GradientBoosting + Linear Ridge ───────────────
+        # ── 앙상블 예측: SARIMA + GBM + Ridge ──────────────────────────
         import warnings; warnings.filterwarnings("ignore")
         try:
             from sklearn.ensemble import GradientBoostingRegressor
@@ -584,6 +584,11 @@ def show_page(session, selected_ym):
             _sklearn_ok = True
         except ImportError:
             _sklearn_ok = False
+        try:
+            from statsmodels.tsa.statespace.sarimax import SARIMAX
+            _stats_ok = True
+        except ImportError:
+            _stats_ok = False
 
         # 피처 생성: 트렌드 인덱스 + 계절성(sin/cos)
         def _make_features(length, first_month_num):
@@ -609,39 +614,86 @@ def show_page(session, selected_ym):
             forecast_ym.append(f"{yr:04d}-{mo:02d}")
 
         cv_results = {}
-        if _sklearn_ok and n_obs >= 24:
-            tscv      = TimeSeriesSplit(n_splits=5)
-            ridge     = Ridge(alpha=1.0)
-            gbm       = GradientBoostingRegressor(
-                            n_estimators=300, max_depth=3,
-                            learning_rate=0.05, subsample=0.8,
-                            random_state=42)
-            for label, mdl in [("Ridge (선형)", ridge), ("Gradient Boosting", gbm)]:
-                rmses, r2s = [], []
-                for tr, val in tscv.split(X_all):
-                    mdl.fit(X_all[tr], y_all[tr])
-                    p = mdl.predict(X_all[val])
-                    rmses.append(np.sqrt(mean_squared_error(y_all[val], p)))
-                    r2s.append(r2_score(y_all[val], p))
-                cv_results[label] = {"RMSE": float(np.mean(rmses)), "R2": float(np.mean(r2s))}
-            # 전체 데이터로 최종 학습 후 앙상블 예측 (GBM 60% + Ridge 40%)
-            ridge.fit(X_all, y_all); gbm.fit(X_all, y_all)
-            forecast_vals = (0.6 * gbm.predict(X_future_f) +
-                             0.4 * ridge.predict(X_future_f)).tolist()
-            model_label   = "GBM + Ridge 앙상블"
-        else:
-            # sklearn 없으면 선형 fallback
-            last_12     = y_all[-12:]
-            trend_slope = (last_12[-1] - last_12[0]) / 12
-            forecast_vals = [y_all[-1] + trend_slope*(i+1) for i in range(24)]
-            model_label   = "Linear Trend (fallback)"
+        sarima_forecast = ridge_forecast = gbm_forecast = None
 
-        # 신뢰구간: 앙상블 CV RMSE 기반 (없으면 ±8%)
-        if cv_results.get("Gradient Boosting"):
-            ci_pct = cv_results["Gradient Boosting"]["RMSE"] / np.mean(y_all)
+        tscv = TimeSeriesSplit(n_splits=5) if _sklearn_ok else None
+
+        # ① Ridge (선형 베이스라인)
+        if _sklearn_ok and n_obs >= 12:
+            ridge = Ridge(alpha=1.0)
+            rmses, r2s = [], []
+            for tr, val in tscv.split(X_all):
+                ridge.fit(X_all[tr], y_all[tr])
+                p = ridge.predict(X_all[val])
+                rmses.append(np.sqrt(mean_squared_error(y_all[val], p)))
+                r2s.append(r2_score(y_all[val], p))
+            cv_results["Ridge"] = {"RMSE": float(np.mean(rmses)), "R2": float(np.mean(r2s))}
+            ridge.fit(X_all, y_all)
+            ridge_forecast = ridge.predict(X_future_f)
+
+        # ② GradientBoosting (트리부스팅 — XGBoost·LightGBM 동일 계열)
+        if _sklearn_ok and n_obs >= 12:
+            gbm = GradientBoostingRegressor(
+                n_estimators=300, max_depth=3,
+                learning_rate=0.05, subsample=0.8, random_state=42)
+            rmses, r2s = [], []
+            for tr, val in tscv.split(X_all):
+                gbm.fit(X_all[tr], y_all[tr])
+                p = gbm.predict(X_all[val])
+                rmses.append(np.sqrt(mean_squared_error(y_all[val], p)))
+                r2s.append(r2_score(y_all[val], p))
+            cv_results["GBM"] = {"RMSE": float(np.mean(rmses)), "R2": float(np.mean(r2s))}
+            gbm.fit(X_all, y_all)
+            gbm_forecast = gbm.predict(X_future_f)
+
+        # ③ SARIMA(1,1,1)(1,1,0,12) — 계절성 시계열 모델
+        if _stats_ok and n_obs >= 24:
+            try:
+                sarima_rmses, sarima_r2s = [], []
+                splits = list(TimeSeriesSplit(n_splits=4).split(y_all)) if _sklearn_ok else []
+                for tr, val in splits:
+                    if len(tr) < 13: continue
+                    mdl = SARIMAX(y_all[tr], order=(1,1,1),
+                                  seasonal_order=(1,1,0,12),
+                                  enforce_stationarity=False,
+                                  enforce_invertibility=False)
+                    res = mdl.fit(disp=False)
+                    p   = res.forecast(steps=len(val))
+                    sarima_rmses.append(np.sqrt(mean_squared_error(y_all[val], p)))
+                    if _sklearn_ok:
+                        sarima_r2s.append(r2_score(y_all[val], p))
+                if sarima_rmses:
+                    cv_results["SARIMA"] = {
+                        "RMSE": float(np.mean(sarima_rmses)),
+                        "R2":   float(np.mean(sarima_r2s)) if sarima_r2s else None,
+                    }
+                # 전체로 최종 학습
+                final_sarima = SARIMAX(y_all, order=(1,1,1),
+                                       seasonal_order=(1,1,0,12),
+                                       enforce_stationarity=False,
+                                       enforce_invertibility=False).fit(disp=False)
+                sarima_forecast = final_sarima.forecast(steps=24)
+            except Exception:
+                pass
+
+        # 앙상블 가중치: SARIMA 35% + GBM 45% + Ridge 20%
+        parts, weights = [], []
+        if sarima_forecast is not None: parts.append(sarima_forecast); weights.append(0.35)
+        if gbm_forecast   is not None: parts.append(gbm_forecast);    weights.append(0.45)
+        if ridge_forecast is not None: parts.append(ridge_forecast);  weights.append(0.20)
+        if parts:
+            w_total       = sum(weights)
+            forecast_arr  = sum(p * (w/w_total) for p, w in zip(parts, weights))
+            forecast_vals = forecast_arr.tolist()
         else:
-            ci_pct = 0.08
-        trend_slope_disp = (forecast_vals[-1] - y_all[-1]) / 24  # 표시용 평균 기울기
+            last_12       = y_all[-12:]
+            trend_slope_f = (last_12[-1] - last_12[0]) / 12
+            forecast_vals = [y_all[-1] + trend_slope_f*(i+1) for i in range(24)]
+
+        # 신뢰구간: GBM CV RMSE 기반 (없으면 ±6%)
+        best_rmse = (cv_results.get("GBM") or cv_results.get("SARIMA") or {}).get("RMSE")
+        ci_pct    = (best_rmse / np.mean(y_all)) if best_rmse else 0.06
+        trend_slope_disp = (forecast_vals[-1] - y_all[-1]) / 24
 
         if forecast_vals:
             delta     = forecast_vals[-1] - y_all[-1]
@@ -715,99 +767,110 @@ def show_page(session, selected_ym):
 
         # ── 예측 모델 상세 expander ────────────────────────────────────
         with st.expander("📐 예측 모델 상세 — 모델 비교 & 검증 점수"):
-            # ── CV 결과 행 생성
+            # ── 3모델 CV 결과 행 생성
+            model_meta = [
+                ("SARIMA",  "시계열",    "#06b6d4",
+                 "SARIMA(1,1,1)(1,1,0,12) · Box-Jenkins 계절성 시계열 모델",
+                 cv_results.get("SARIMA"), False),
+                ("GBM",     "트리부스팅","#fb923c",
+                 "Gradient Boosting · XGBoost·LightGBM 동일 계열 · depth=3, n=300",
+                 cv_results.get("GBM"),    True),
+                ("Ridge",   "선형",      "#818cf8",
+                 "Ridge Regression · 트렌드 + 계절성(sin/cos) 피처",
+                 cv_results.get("Ridge"),  False),
+            ]
             cv_rows_html = ""
-            model_meta = {
-                "Ridge (선형)": {
-                    "badge": "선형",
-                    "color": "#818cf8",
-                    "desc": "Ridge Regression · 트렌드+계절성 피처",
-                    "selected": False,
-                },
-                "Gradient Boosting": {
-                    "badge": "트리부스팅",
-                    "color": "#fb923c",
-                    "desc": "GBM · XGBoost·LightGBM 동일 계열 · depth=3, n=300",
-                    "selected": True,
-                },
-            }
-            for mname, meta in model_meta.items():
-                res      = cv_results.get(mname)
-                rmse_str = f"₩{res['RMSE']:,.0f}"  if res else "—"
-                r2_str   = f"{res['R2']:.3f}"       if res else "—"
-                r2_bar   = max(0, min(1, res['R2'])) * 100 if res else 0
-                sel_bg   = "#0f2a1a" if meta["selected"] else "#1e293b"
-                sel_bd   = "#34d399" if meta["selected"] else "#334155"
-                star     = ' <span style="color:#fbbf24;">★ 채택</span>' if meta["selected"] else ""
+            for mkey, badge, color, desc, res, selected in model_meta:
+                rmse_str = f"₩{res['RMSE']:,.0f}" if res else "—"
+                r2_val   = res['R2'] if (res and res.get('R2') is not None) else None
+                r2_str   = f"{r2_val:.3f}" if r2_val is not None else "—"
+                r2_bar   = max(0, min(1, r2_val)) * 100 if r2_val is not None else 0
+                sel_bg   = "#0f2a1a" if selected else "#1e293b"
+                sel_bd   = "#34d399" if selected else "#334155"
+                star     = ' <span style="color:#fbbf24;font-size:11px;">★ 채택</span>' if selected else ""
                 cv_rows_html += f"""
 <div style="background:{sel_bg};border:1px solid {sel_bd};border-radius:8px;
-            padding:12px 16px;margin-bottom:8px;display:grid;
-            grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;">
-  <div style="background:{meta['color']}22;border:1px solid {meta['color']}66;
-              border-radius:4px;padding:2px 8px;font-size:10px;
-              color:{meta['color']};font-weight:700;white-space:nowrap;">{meta['badge']}</div>
+            padding:11px 14px;margin-bottom:7px;display:grid;
+            grid-template-columns:70px 1fr 110px 110px;align-items:center;gap:10px;">
+  <div style="background:{color}22;border:1px solid {color}55;border-radius:4px;
+              padding:3px 0;font-size:10px;color:{color};font-weight:700;
+              text-align:center;">{badge}</div>
   <div>
-    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">{mname}{star}</div>
-    <div style="color:#64748b;font-size:10px;">{meta['desc']}</div>
+    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">{mkey}{star}</div>
+    <div style="color:#475569;font-size:10px;margin-top:2px;">{desc}</div>
   </div>
   <div style="text-align:right;">
-    <div style="color:#94a3b8;font-size:10px;">RMSE</div>
-    <div style="color:#e2e8f0;font-size:12px;font-weight:700;">{rmse_str}</div>
+    <div style="color:#64748b;font-size:10px;margin-bottom:2px;">RMSE (CV)</div>
+    <div style="color:#e2e8f0;font-size:13px;font-weight:700;">{rmse_str}</div>
   </div>
-  <div style="text-align:right;min-width:80px;">
-    <div style="color:#94a3b8;font-size:10px;">R² (5-fold CV)</div>
-    <div style="color:#34d399;font-size:13px;font-weight:800;">{r2_str}</div>
-    <div style="background:#1e293b;border-radius:3px;height:4px;width:80px;margin-top:3px;">
-      <div style="background:#34d399;width:{r2_bar:.0f}%;height:4px;border-radius:3px;"></div>
+  <div style="text-align:right;">
+    <div style="color:#64748b;font-size:10px;margin-bottom:2px;">R² (CV)</div>
+    <div style="color:#34d399;font-size:14px;font-weight:800;">{r2_str}</div>
+    <div style="background:#0f172a;border-radius:3px;height:5px;width:100%;margin-top:4px;">
+      <div style="background:linear-gradient(90deg,#34d399,#06b6d4);width:{r2_bar:.0f}%;
+                  height:5px;border-radius:3px;"></div>
     </div>
   </div>
 </div>"""
-            # 앙상블 결과 행
-            ens_rmse = 0.0
-            if cv_results.get("Ridge (선형)") and cv_results.get("Gradient Boosting"):
-                ens_rmse = 0.4*cv_results["Ridge (선형)"]["RMSE"] + 0.6*cv_results["Gradient Boosting"]["RMSE"]
-                ens_r2   = 0.4*cv_results["Ridge (선형)"]["R2"]   + 0.6*cv_results["Gradient Boosting"]["R2"]
+
+            # 앙상블 합산 행
+            ens_parts = [(cv_results.get("SARIMA"), 0.35),
+                         (cv_results.get("GBM"),    0.45),
+                         (cv_results.get("Ridge"),  0.20)]
+            valid_ens = [(r, w) for r, w in ens_parts if r]
+            if valid_ens:
+                w_tot    = sum(w for _, w in valid_ens)
+                ens_rmse = sum(r["RMSE"]*(w/w_tot) for r, w in valid_ens)
+                ens_r2s  = [r["R2"] for r, _ in valid_ens if r.get("R2") is not None]
+                ens_r2   = sum(r["R2"]*(w/w_tot) for r, w in valid_ens
+                               if r.get("R2") is not None) / (sum(w/w_tot for r, w in valid_ens
+                               if r.get("R2") is not None) or 1)
                 ens_bar  = max(0, min(1, ens_r2)) * 100
+                w_desc   = " + ".join([f"{k} {int(w*100)}%" for (r,w),(k,*_) in
+                                       zip(valid_ens, [("SARIMA",), ("GBM",), ("Ridge",)])])
                 cv_rows_html += f"""
-<div style="background:linear-gradient(90deg,#0f2a2a,#0f1f2a);border:2px solid #34d399;
-            border-radius:8px;padding:12px 16px;display:grid;
-            grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;">
+<div style="background:linear-gradient(135deg,#0f2a20,#0f1e2a);border:2px solid #34d399;
+            border-radius:8px;padding:11px 14px;display:grid;
+            grid-template-columns:70px 1fr 110px 110px;align-items:center;gap:10px;">
   <div style="background:#34d39922;border:1px solid #34d39966;border-radius:4px;
-              padding:2px 8px;font-size:10px;color:#34d399;font-weight:700;">앙상블</div>
+              padding:3px 0;font-size:10px;color:#34d399;font-weight:700;text-align:center;">앙상블</div>
   <div>
-    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">GBM 60% + Ridge 40% <span style="color:#fbbf24;">★ 최종 예측</span></div>
-    <div style="color:#64748b;font-size:10px;">TimeSeriesSplit 5-fold · 트렌드+계절성(sin/cos) 피처</div>
+    <div style="color:#e2e8f0;font-size:13px;font-weight:600;">
+      {w_desc} <span style="color:#fbbf24;font-size:11px;">★ 최종 예측</span></div>
+    <div style="color:#475569;font-size:10px;margin-top:2px;">
+      TimeSeriesSplit {4 if _stats_ok else 5}-fold · 가중 평균 앙상블</div>
   </div>
   <div style="text-align:right;">
-    <div style="color:#94a3b8;font-size:10px;">RMSE (가중평균)</div>
-    <div style="color:#e2e8f0;font-size:12px;font-weight:700;">₩{ens_rmse:,.0f}</div>
+    <div style="color:#64748b;font-size:10px;margin-bottom:2px;">RMSE (가중평균)</div>
+    <div style="color:#e2e8f0;font-size:13px;font-weight:700;">₩{ens_rmse:,.0f}</div>
   </div>
-  <div style="text-align:right;min-width:80px;">
-    <div style="color:#94a3b8;font-size:10px;">R² (가중평균)</div>
-    <div style="color:#34d399;font-size:13px;font-weight:800;">{ens_r2:.3f}</div>
-    <div style="background:#1e293b;border-radius:3px;height:4px;width:80px;margin-top:3px;">
-      <div style="background:#34d399;width:{ens_bar:.0f}%;height:4px;border-radius:3px;"></div>
+  <div style="text-align:right;">
+    <div style="color:#64748b;font-size:10px;margin-bottom:2px;">R² (가중평균)</div>
+    <div style="color:#34d399;font-size:14px;font-weight:800;">{ens_r2:.3f}</div>
+    <div style="background:#0f172a;border-radius:3px;height:5px;width:100%;margin-top:4px;">
+      <div style="background:linear-gradient(90deg,#34d399,#fbbf24);width:{ens_bar:.0f}%;
+                  height:5px;border-radius:3px;"></div>
     </div>
   </div>
 </div>"""
             st.markdown(f"""
 <div style="margin-bottom:10px;">
-  <span style="color:#94a3b8;font-size:11px;">
-    📊 학습 데이터: {df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]} ({n_obs}개월) &nbsp;·&nbsp;
-    🔁 검증: TimeSeriesSplit 5-fold &nbsp;·&nbsp;
+  <span style="color:#64748b;font-size:11px;">
+    📊 학습: {df_trend["YEAR_MONTH"].iloc[0]} ~ {df_trend["YEAR_MONTH"].iloc[-1]} ({n_obs}개월) &nbsp;·&nbsp;
+    🔁 TimeSeriesSplit CV &nbsp;·&nbsp;
     🎯 예측: {forecast_ym[0] if forecast_ym else "-"} ~ {forecast_ym[-1] if forecast_ym else "-"} (24개월)
   </span>
 </div>
 {cv_rows_html}
-<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;
-            padding:12px;margin-top:10px;">
-  <div style="color:#94a3b8;font-size:11px;line-height:1.8;">
-    <b style="color:#e2e8f0;">📌 해석 가이드</b><br>
-    • <b style="color:#fbbf24;">노란 점선</b> = 앙상블 예측값 &nbsp;·&nbsp;
-      <b style="color:#fbbf24;">노란 음영</b> = 신뢰구간 (CV RMSE 기반 ±{ci_pct*100:.1f}%)<br>
-    • <b style="color:#e2e8f0;">R²</b> = 1에 가까울수록 예측이 실제값을 잘 설명함 (1.0 = 완벽)<br>
-    • <b style="color:#e2e8f0;">RMSE</b> = 예측 오차의 평균 크기 (단위: 원)<br>
-    • 월평균 기울기: <b style="color:#e2e8f0;">₩{trend_slope_disp:+,.0f} / 월</b>
+<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;
+            padding:12px 14px;margin-top:10px;">
+  <div style="color:#64748b;font-size:11px;line-height:1.9;">
+    <b style="color:#cbd5e1;">📌 해석 가이드</b><br>
+    • <b style="color:#06b6d4;">SARIMA</b> = 계절 패턴·추세·노이즈를 수식으로 분해하는 통계 시계열 모델<br>
+    • <b style="color:#fb923c;">GBM</b> = 여러 결정트리를 순서대로 쌓아 오차를 줄이는 트리부스팅 (XGBoost·LightGBM 동일 계열)<br>
+    • <b style="color:#818cf8;">Ridge</b> = 과적합 방지 정규화가 추가된 선형 회귀<br>
+    • <b style="color:#e2e8f0;">R²</b> 1에 가까울수록 우수 &nbsp;·&nbsp; <b style="color:#e2e8f0;">RMSE</b> 낮을수록 오차 작음<br>
+    • 신뢰구간: CV RMSE 기반 ±{ci_pct*100:.1f}% &nbsp;·&nbsp; 월 평균 기울기: <b style="color:#e2e8f0;">₩{trend_slope_disp:+,.0f}</b>
   </div>
 </div>
 """, unsafe_allow_html=True)

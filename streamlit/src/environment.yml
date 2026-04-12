@@ -8,3 +8,5 @@ dependencies:
   - plotly
   - matplotlib
   - openpyxl
+  - scikit-learn
+  - statsmodels
