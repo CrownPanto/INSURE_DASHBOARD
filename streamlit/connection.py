@@ -6,21 +6,20 @@ import streamlit as st
 def get_session():
     """
     Snowflake 세션을 가져오는 공통 함수
+    SiS(Snowflake in Streamlit) 환경 우선, 로컬은 .streamlit/secrets.toml 사용
     """
     try:
         # 1. Snowflake 웹(SiS) 환경인지 확인
         return get_active_session()
     except Exception:
-        # 2. 로컬(PyCharm) 환경일 경우 직접 연결
-        # 보안을 위해 실제 서비스 시에는 st.secrets 등을 쓰는 게 좋지만,
-        # 일단 지금은 성혁 님 로컬용으로 아래 정보를 채우세요.
-        connection_parameters = {
-            "account": "nfkpxoq-pe61822",
-            "user": "likewise95",
-            "password": "Cnrrn1187cnrrn1187*",
-            "role": "ACCOUNTADMIN",
-            "warehouse": "COMPUTE_WH",
-            "database": "성혁님_DB명",
-            "schema": "PUBLIC"
-        }
-        return Session.builder.configs(connection_parameters).create()
+        # 2. 로컬 환경 - .streamlit/secrets.toml 에서 읽음 (Git에 커밋 금지)
+        conn = st.secrets["connections"]["snowpark"]
+        return Session.builder.configs({
+            "account":   conn["account"],
+            "user":      conn["user"],
+            "password":  conn["password"],
+            "role":      conn["role"],
+            "warehouse": conn["warehouse"],
+            "database":  conn["database"],
+            "schema":    conn["schema"],
+        }).create()

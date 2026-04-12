@@ -5,8 +5,23 @@ from snowflake.snowpark import Session
 
 # ─── 세션 및 로더 설정 ───
 def get_session():
-    try: return get_active_session()
-    except: return Session.builder.configs(st.secrets["connections"]["snowpark"]).create()
+    try:
+        return get_active_session()
+    except:
+        try:
+            conn = st.secrets["connections"]["snowpark"]
+            return Session.builder.configs({
+                "account":   conn["account"],
+                "user":      conn["user"],
+                "password":  conn["password"],
+                "role":      conn["role"],
+                "warehouse": conn["warehouse"],
+                "database":  conn["database"],
+                "schema":    conn["schema"],
+            }).create()
+        except Exception as e:
+            st.error(f"❌ Snowflake 연결 실패: {e}")
+            return None
 
 def load_page(file_path):
     spec = importlib.util.spec_from_file_location("page_module", file_path)
@@ -21,10 +36,18 @@ st.set_page_config(page_title="INSURE | 동산보험 동적 설계 엔진", page
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = "🗺️ 서울시 보험료 지도"
 
-# ─── 1. 성혁님의 가독성 해결 CSS 주입 ───
+# ─── 1. 글로벌 CSS (배경색 + 사이드바) ───
 st.markdown("""
     <style>
-    [data-testid="stSidebar"] { background-color: #111827; }
+    /* ── 메인 배경만 (사이드바 제외) ── */
+    .stApp { background-color: #dde3ec !important; }
+    [data-testid="stAppViewContainer"] > section[data-testid="stMain"],
+    [data-testid="stMain"],
+    [data-testid="block-container"] {
+        background-color: #dde3ec !important;
+    }
+    /* ── 사이드바 유지 ── */
+    [data-testid="stSidebar"] { background-color: #111827 !important; }
     .menu-label { font-size: 0.85rem; font-weight: 600; color: #9CA3AF; margin: 1.5rem 0 0.5rem 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
     div.stButton > button[kind="secondary"] { background-color: transparent !important; border: none !important; text-align: left !important; color: #D1D5DB !important; width: 100% !important; display: flex !important; justify-content: flex-start !important; }
     div.stButton > button[kind="secondary"]:hover { background-color: #1F2937 !important; color: #FFFFFF !important; }
@@ -38,7 +61,8 @@ st.sidebar.markdown(f"""<div style="padding: 1rem 0.5rem;"><h1 style="color: whi
 st.sidebar.markdown('<p class="menu-label">Main Menu</p>', unsafe_allow_html=True)
 
 # v3용 메뉴 리스트
-menu_list = ["🗺️ 서울시 보험료 지도", "🎯 맞춤 보험 시뮬레이터", "💬 AI 보험 상담", "⚙️ 엔진 상세", "📊 시스템 현황"]
+# menu_list = ["🗺️ 서울시 보험료 지도", "🎯 맞춤 보험 시뮬레이터", "💬 AI 보험 상담", "⚙️ 엔진 상세", "📊 시스템 현황"]
+menu_list = ["🗺️ 서울시 보험료 지도", "🎯 맞춤 보험 시뮬레이터", "💬 AI 보험 상담", "💰  보험료 산출"]
 
 for menu in menu_list:
     btn_type = "primary" if st.session_state['current_page'] == menu else "secondary"
@@ -69,10 +93,10 @@ elif page == "💬 AI 보험 상담":
     page_module = load_page("streamlit/src/03_Thirdpage/third_page.py")
     page_module.show_page(session, selected_month)
 
-elif page == "⚙️ 엔진 상세":
+elif page == "💰  보험료 산출":
     page_module = load_page("streamlit/src/04_Fourthpage/fourth_page.py")
     page_module.show_page(session, selected_month)
 
-elif page == "📊 시스템 현황":
-    page_module = load_page("streamlit/src/05_Fifthpage/fifth_page.py")
-    page_module.show_page(session, selected_month)
+# elif page == "📊 시스템 현황":
+#     page_module = load_page("streamlit/src/05_Fifthpage/fifth_page.py")
+#     page_module.show_page(session, selected_month)

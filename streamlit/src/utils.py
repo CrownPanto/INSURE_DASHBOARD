@@ -8,31 +8,34 @@ DEMO_DISTRICTS = [
 ]
 
 DISTRICT_PROFILES = {
-    "강남구":{"pop":547000,"risk":42.3,"fire":28.5,"theft":18.2,"building":22.1,"weather":15.8,"base":52000},
-    "강동구":{"pop":453000,"risk":38.7,"fire":22.1,"theft":15.3,"building":25.4,"weather":14.2,"base":41000},
-    "강북구":{"pop":303000,"risk":52.8,"fire":31.2,"theft":22.5,"building":42.3,"weather":18.7,"base":38000},
-    "강서구":{"pop":576000,"risk":41.2,"fire":25.8,"theft":19.1,"building":28.3,"weather":16.4,"base":43000},
-    "관악구":{"pop":498000,"risk":48.5,"fire":27.3,"theft":24.8,"building":38.2,"weather":17.5,"base":40000},
-    "광진구":{"pop":352000,"risk":39.4,"fire":23.5,"theft":20.1,"building":26.7,"weather":15.3,"base":44000},
-    "구로구":{"pop":411000,"risk":44.1,"fire":26.2,"theft":21.3,"building":33.5,"weather":16.8,"base":39000},
-    "금천구":{"pop":234000,"risk":46.3,"fire":28.8,"theft":20.7,"building":35.8,"weather":17.1,"base":37000},
-    "노원구":{"pop":519000,"risk":40.5,"fire":21.3,"theft":16.8,"building":32.1,"weather":19.2,"base":36000},
-    "도봉구":{"pop":326000,"risk":43.2,"fire":22.5,"theft":15.1,"building":35.7,"weather":20.3,"base":35000},
-    "동대문구":{"pop":352000,"risk":47.8,"fire":29.5,"theft":23.4,"building":36.2,"weather":16.5,"base":42000},
-    "동작구":{"pop":395000,"risk":44.7,"fire":24.8,"theft":19.5,"building":34.1,"weather":17.8,"base":43000},
-    "마포구":{"pop":376000,"risk":40.1,"fire":24.2,"theft":21.3,"building":25.8,"weather":15.1,"base":48000},
-    "서대문구":{"pop":314000,"risk":45.3,"fire":25.1,"theft":18.7,"building":37.5,"weather":18.2,"base":41000},
-    "서초구":{"pop":432000,"risk":37.8,"fire":22.8,"theft":16.5,"building":19.3,"weather":14.7,"base":55000},
-    "성동구":{"pop":305000,"risk":41.5,"fire":25.3,"theft":19.8,"building":27.4,"weather":15.9,"base":46000},
-    "성북구":{"pop":440000,"risk":46.8,"fire":26.7,"theft":20.2,"building":38.8,"weather":18.5,"base":39000},
-    "송파구":{"pop":667000,"risk":38.2,"fire":23.1,"theft":17.5,"building":21.8,"weather":14.5,"base":50000},
-    "양천구":{"pop":454000,"risk":39.8,"fire":22.7,"theft":16.2,"building":28.5,"weather":15.8,"base":42000},
-    "영등포구":{"pop":399000,"risk":49.2,"fire":32.1,"theft":25.3,"building":30.5,"weather":16.2,"base":45000},
-    "용산구":{"pop":229000,"risk":43.5,"fire":27.8,"theft":22.1,"building":24.2,"weather":15.5,"base":53000},
-    "은평구":{"pop":480000,"risk":42.7,"fire":23.8,"theft":17.5,"building":34.2,"weather":19.5,"base":38000},
-    "종로구":{"pop":152000,"risk":50.3,"fire":33.5,"theft":28.2,"building":31.8,"weather":16.1,"base":48000},
-    "중구":{"pop":133000,"risk":51.7,"fire":35.2,"theft":30.1,"building":28.5,"weather":15.3,"base":50000},
-    "중랑구":{"pop":393000,"risk":47.1,"fire":26.3,"theft":21.8,"building":37.2,"weather":18.1,"base":37000},
+    # income_ratio: 구별 자산 수준 보정 — Snowflake REAL_ESTATE_TRANSACTIONS asset_ratio 기반
+    # 공식: 0.6 + 0.4 × √(apt_price / seoul_avg_apt_price)
+    # 범위: 강북(0.90) ~ 강남(1.20) — 세그먼트 소득에 지역 자산 수준을 추가 반영
+    "강남구":  {"pop":547000,"risk":42.3,"fire":28.5,"theft":18.2,"building":22.1,"weather":15.8,"base":57000,"income_ratio":1.20},
+    "강동구":  {"pop":453000,"risk":38.7,"fire":22.1,"theft":15.3,"building":25.4,"weather":14.2,"base":41000,"income_ratio":1.03},
+    "강북구":  {"pop":303000,"risk":52.8,"fire":31.2,"theft":22.5,"building":42.3,"weather":18.7,"base":38000,"income_ratio":0.90},
+    "강서구":  {"pop":576000,"risk":41.2,"fire":25.8,"theft":19.1,"building":28.3,"weather":16.4,"base":43000,"income_ratio":0.98},
+    "관악구":  {"pop":498000,"risk":48.5,"fire":27.3,"theft":24.8,"building":38.2,"weather":17.5,"base":40000,"income_ratio":0.93},
+    "광진구":  {"pop":352000,"risk":39.4,"fire":23.5,"theft":20.1,"building":26.7,"weather":15.3,"base":44000,"income_ratio":1.00},
+    "구로구":  {"pop":411000,"risk":44.1,"fire":26.2,"theft":21.3,"building":33.5,"weather":16.8,"base":39000,"income_ratio":0.94},
+    "금천구":  {"pop":234000,"risk":46.3,"fire":28.8,"theft":20.7,"building":35.8,"weather":17.1,"base":37000,"income_ratio":0.91},
+    "노원구":  {"pop":519000,"risk":40.5,"fire":21.3,"theft":16.8,"building":32.1,"weather":19.2,"base":36000,"income_ratio":0.93},
+    "도봉구":  {"pop":326000,"risk":43.2,"fire":22.5,"theft":15.1,"building":35.7,"weather":20.3,"base":35000,"income_ratio":0.90},
+    "동대문구":{"pop":352000,"risk":47.8,"fire":29.5,"theft":23.4,"building":36.2,"weather":16.5,"base":42000,"income_ratio":0.94},
+    "동작구":  {"pop":395000,"risk":44.7,"fire":24.8,"theft":19.5,"building":34.1,"weather":17.8,"base":43000,"income_ratio":0.98},
+    "마포구":  {"pop":376000,"risk":40.1,"fire":24.2,"theft":21.3,"building":25.8,"weather":15.1,"base":48000,"income_ratio":1.03},
+    "서대문구":{"pop":314000,"risk":45.3,"fire":25.1,"theft":18.7,"building":37.5,"weather":18.2,"base":41000,"income_ratio":0.96},
+    "서초구":  {"pop":432000,"risk":37.8,"fire":22.8,"theft":16.5,"building":19.3,"weather":14.7,"base":54000,"income_ratio":1.17},
+    "성동구":  {"pop":305000,"risk":41.5,"fire":25.3,"theft":19.8,"building":27.4,"weather":15.9,"base":46000,"income_ratio":1.02},
+    "성북구":  {"pop":440000,"risk":46.8,"fire":26.7,"theft":20.2,"building":38.8,"weather":18.5,"base":39000,"income_ratio":0.93},
+    "송파구":  {"pop":667000,"risk":38.2,"fire":23.1,"theft":17.5,"building":21.8,"weather":14.5,"base":50000,"income_ratio":1.09},
+    "양천구":  {"pop":454000,"risk":39.8,"fire":22.7,"theft":16.2,"building":28.5,"weather":15.8,"base":42000,"income_ratio":1.00},
+    "영등포구":{"pop":399000,"risk":49.2,"fire":32.1,"theft":25.3,"building":30.5,"weather":16.2,"base":45000,"income_ratio":1.01},
+    "용산구":  {"pop":229000,"risk":43.5,"fire":27.8,"theft":22.1,"building":24.2,"weather":15.5,"base":53000,"income_ratio":1.11},
+    "은평구":  {"pop":480000,"risk":42.7,"fire":23.8,"theft":17.5,"building":34.2,"weather":19.5,"base":38000,"income_ratio":0.93},
+    "종로구":  {"pop":152000,"risk":50.3,"fire":33.5,"theft":28.2,"building":31.8,"weather":16.1,"base":48000,"income_ratio":1.00},
+    "중구":    {"pop":133000,"risk":51.7,"fire":35.2,"theft":30.1,"building":28.5,"weather":15.3,"base":50000,"income_ratio":1.01},
+    "중랑구":  {"pop":393000,"risk":47.1,"fire":26.3,"theft":21.8,"building":37.2,"weather":18.1,"base":37000,"income_ratio":0.91},
 }
 
 SEGMENTS_A = {
@@ -53,23 +56,114 @@ SEGMENTS_B = {
 }
 
 PRESETS = [
-    {"name": "영등포 청년 A4+B2", "district": "영등포구", "seg_a": "A4", "seg_b": "B2",
-     "income": 35, "desc": "영등포 원룸 1인가구, 노트북+모니터 중심", "active": True,
-     "persona": "김민수 (28세) — 영등포구 당산동 원룸, IT 프리랜서",
-     "default_items": ["가전제품", "전자기기", "의류/생활"]},
-    {"name": "서초 중년가족 A5+B1", "district": "서초구", "seg_a": "A5", "seg_b": "B1",
-     "income": 80, "desc": "서초 아파트 4인가족, 고가 가전 다수", "active": True,
-     "persona": "박지영 (47세) — 서초구 반포동 아파트, 4인 가족",
-     "default_items": ["가전제품", "전자기기", "가구류", "의류/생활"]},
-    {"name": "강북 노년 A6+B3", "district": "강북구", "seg_a": "A6", "seg_b": "B3",
-     "income": 30, "desc": "강북 단독주택, 오래된 가구 중심", "active": False,
-     "persona": "이순자 (68세) — 강북구 수유동 단독주택",
-     "default_items": ["가전제품", "가구류", "의류/생활"]},
-    {"name": "송파 신혼 A1+B4", "district": "송파구", "seg_a": "A1", "seg_b": "B4",
-     "income": 60, "desc": "송파 신혼부부, 차량+신규 가전", "active": False,
-     "persona": "최현우·한소희 (31·29세) — 송파구 잠실 신축 아파트",
-     "default_items": ["가전제품", "전자기기", "자동차부품", "가구류"]},
+    {
+        "id": "P01", "icon": "🏢",
+        "name": "원룸 사회초년생", "district": "영등포구", "seg_a": "A4", "seg_b": "B2",
+        "income": 28, "desc": "20대 직장인, 원룸 거주, 전자기기 중심",
+        "persona": "김민수 (26세) — 영등포구 원룸, IT 직장인",
+        "premium_range": "2.5~4.5만원", "active": True,
+        "default_items": ["가전제품", "전자기기", "의류/생활"],
+    },
+    {
+        "id": "P02", "icon": "💍",
+        "name": "신혼부부 맞벌이", "district": "송파구", "seg_a": "A1", "seg_b": "B1",
+        "income": 55, "desc": "신혼 아파트, 가전 풀세트 구비",
+        "persona": "이준호·김수연 (32·30세) — 송파구 신혼 아파트",
+        "premium_range": "3.5~6.5만원", "active": True,
+        "default_items": ["가전제품", "전자기기", "가구류"],
+    },
+    {
+        "id": "P03", "icon": "👶",
+        "name": "영유아 워킹마마", "district": "마포구", "seg_a": "A2", "seg_b": "B2",
+        "income": 65, "desc": "영아 자녀, 안전 최우선 맞벌이",
+        "persona": "박지은 (34세) — 마포구 아파트, 워킹맘",
+        "premium_range": "4.5~8만원", "active": True,
+        "default_items": ["가전제품", "전자기기", "의류/생활"],
+    },
+    {
+        "id": "P04", "icon": "🏫",
+        "name": "학군지 4인가족", "district": "강남구", "seg_a": "A3", "seg_b": "B3",
+        "income": 85, "desc": "학군지 아파트, 초등 자녀 2명",
+        "persona": "최성민 (42세) — 강남구 대치동 아파트, 4인 가족",
+        "premium_range": "5.5~9.5만원", "active": True,
+        "default_items": ["가전제품", "전자기기", "가구류", "의류/생활"],
+    },
+    {
+        "id": "P05", "icon": "🏘️",
+        "name": "50대 건물주", "district": "서초구", "seg_a": "A5", "seg_b": "B1",
+        "income": 120, "desc": "고가 자산 보유, 명품·고가 가전",
+        "persona": "정태호 (54세) — 서초구 반포동 건물주",
+        "premium_range": "12~25만원", "active": True,
+        "default_items": ["가전제품", "가구류", "귀금속/명품"],
+    },
+    {
+        "id": "P06", "icon": "👴",
+        "name": "은퇴 시니어", "district": "노원구", "seg_a": "A6", "seg_b": "B3",
+        "income": 25, "desc": "은퇴 후 고정수입, 기본 보장 중심",
+        "persona": "이순자 (67세) — 노원구 아파트, 은퇴 생활",
+        "premium_range": "3.5~5.5만원", "active": True,
+        "default_items": ["가전제품", "가구류"],
+    },
+    {
+        "id": "P07", "icon": "🏪",
+        "name": "골목상가 자영업자", "district": "종로구", "seg_a": "A5", "seg_b": "B5",
+        "income": 72, "desc": "상가 겸용 거주, 업무장비 다수",
+        "persona": "한상욱 (48세) — 종로구 상가 자영업자",
+        "premium_range": "6.5~12만원", "active": True,
+        "default_items": ["가전제품", "전자기기", "가구류"],
+    },
+    {
+        "id": "P08", "icon": "💼",
+        "name": "영리치 싱글", "district": "강남구", "seg_a": "A4", "seg_b": "B5",
+        "income": 95, "desc": "고소득 1인, 명품·프리미엄 전자기기",
+        "persona": "서지훈 (35세) — 강남구 청담동, 고소득 직장인",
+        "premium_range": "8~15만원", "active": True,
+        "default_items": ["전자기기", "귀금속/명품", "의류/생활"],
+    },
+    {
+        "id": "P09", "icon": "🛍️",
+        "name": "소비과다 2030", "district": "관악구", "seg_a": "A4", "seg_b": "B4",
+        "income": 30, "desc": "지출 많은 2030, 차량 보유",
+        "persona": "윤채원 (28세) — 관악구 원룸, 차량 보유 직장인",
+        "premium_range": "1.5~3만원", "active": True,
+        "default_items": ["전자기기", "자동차부품", "의류/생활"],
+    },
+    {
+        "id": "P10", "icon": "🖥️",
+        "name": "전문직 재택근무", "district": "성동구", "seg_a": "A4", "seg_b": "B2",
+        "income": 65, "desc": "재택 전문직, 고가 업무장비",
+        "persona": "김도윤 (38세) — 성동구 아파트, 재택 전문직",
+        "premium_range": "4~7만원", "active": True,
+        "default_items": ["가전제품", "전자기기"],
+    },
 ]
+
+# ── 보험수리 상수 (단일 출처) ─────────────────────────────────
+_BASE_FIRE_RATE = 0.001125   # 기본 화재 빈도 (건/년)
+_SEVERITY       = 15_000_000 # 기대 손해액 (원)
+_LOADING_RATE   = 0.51       # 사업비 로딩율
+_FIRE_NORM      = 26.0       # 화재 위험 정규화 기준
+_INCOME_NORM    = 50         # 소득 정규화 기준 (백만원)
+_BURDEN_CAP_PCT = 0.02       # 월소득 대비 보험료 상한 비율
+
+
+def _risk_multiplier(risk_score: float) -> float:
+    """비선형 리스크 커브 v1.3 — 단일 출처"""
+    if   risk_score < 25: return 0.85 + (risk_score / 25.0) ** 0.7 * 0.15
+    elif risk_score < 40: return 1.00 + (risk_score - 25) / 100.0
+    elif risk_score < 60: return 1.15 + ((risk_score - 40) / 20.0) ** 1.5 * 0.35
+    elif risk_score < 80: return 1.50 + ((risk_score - 60) / 20.0) ** 1.8 * 0.50
+    else:                 return min(2.00 + (risk_score - 80) * 0.02, 2.50)
+
+
+def risk_grade_info(risk_score: float) -> dict:
+    """등급·색상·이모지·레이블 — 단일 출처 (second/fourth page 공유)"""
+    if   risk_score < 38: return {"grade":"A","label":"최저위험","color":"#10B981","emoji":"😌","bg":"rgba(16,185,129,.12)"}
+    elif risk_score < 42: return {"grade":"B","label":"낮음",    "color":"#818cf8","emoji":"🙂","bg":"rgba(129,140,248,.12)"}
+    elif risk_score < 47: return {"grade":"C","label":"보통",    "color":"#fbbf24","emoji":"😐","bg":"rgba(251,191,36,.12)"}
+    elif risk_score < 52: return {"grade":"D","label":"높음",    "color":"#fb923c","emoji":"😟","bg":"rgba(251,146,60,.12)"}
+    else:                 return {"grade":"E","label":"최고위험","color":"#f87171","emoji":"😱","bg":"rgba(248,113,113,.12)"}
+
 
 COVERAGE_ITEMS = {
     "가전제품": {"limit": 5000000, "damage_rate": 0.032, "icon": "🏠", "examples": "냉장고, 세탁기, 에어컨, TV"},
@@ -81,7 +175,7 @@ COVERAGE_ITEMS = {
 }
 
 def _demo_district_data():
-    # ★ v2.5 FIX: DB 로직과 동기화 — IQR 클램핑 + 비선형(지수) 리스크 보정
+    # DB 로직과 동기화 — IQR 클램핑 + 선형 리스크 보정
     import numpy as np
     bases = [DISTRICT_PROFILES[gu]["base"] for gu in DEMO_DISTRICTS]
     q1, q3 = np.percentile(bases, 25), np.percentile(bases, 75)
@@ -92,12 +186,11 @@ def _demo_district_data():
     rows = []
     for gu in DEMO_DISTRICTS:
         p = DISTRICT_PROFILES.get(gu, {})
-        grade = "A" if p["risk"] < 38 else "B" if p["risk"] < 42 else "C" if p["risk"] < 47 else "D" if p["risk"] < 52 else "E"
+        grade = risk_grade_info(p["risk"])["grade"]
         # IQR 클램핑 적용 (DB의 LEAST/GREATEST와 동일)
         clamped_base = max(min(p["base"], upper_bound), lower_bound)
-        # DB 공식: base * (1 + risk²/8000) * credit_factor (데모는 신용 1.05 가정)
-        # ★ v2.5: 선형 (1+risk/200) → 비선형 제곱함수로 변경 (지역별 편차 확대)
-        adj_premium = int(clamped_base * (1 + p["risk"] ** 2 / 8000.0) * 1.05)
+        # DB 공식: base * (1 + risk/200) * credit_factor (데모는 신용 1.05 가정)
+        adj_premium = int(clamped_base * (1 + p["risk"] / 200.0) * 1.05)
         market = int(p["pop"] * adj_premium * 0.03 / 1e8) * 1e8
         rows.append({
             "GU_NAME": gu, "TOTAL_POPULATION": p["pop"], "COMPOSITE_RISK_SCORE": p["risk"], "RISK_GRADE": grade,
@@ -112,17 +205,14 @@ def calc_premium(district, seg_a_key, seg_b_key, income=50, selected_items=None)
     risk_score = p["risk"]
     seg_a = SEGMENTS_A[seg_a_key]
     seg_b = SEGMENTS_B[seg_b_key]
-    base_fire_rate, severity, loading_rate = 0.001125, 15000000, 0.51
-    fire_freq = base_fire_rate * (p["fire"] / 26.0)
-    pure = fire_freq * severity
-    experience = pure * (income / 50.0)
-    if risk_score < 25: risk_mult = 0.85 + (risk_score / 25.0) ** 0.7 * 0.15
-    elif risk_score < 40: risk_mult = 1.00 + (risk_score - 25) / 100.0
-    elif risk_score < 60: risk_mult = 1.15 + ((risk_score - 40) / 20.0) ** 1.5 * 0.35
-    elif risk_score < 80: risk_mult = 1.50 + ((risk_score - 60) / 20.0) ** 1.8 * 0.50
-    else: risk_mult = min(2.00 + (risk_score - 80) * 0.02, 2.50)
-    risk_classified = experience * risk_mult
-    loaded = risk_classified * (1 + loading_rate)
+    fire_freq = _BASE_FIRE_RATE * (p["fire"] / _FIRE_NORM)
+    pure = fire_freq * _SEVERITY
+    experience = pure * (income / _INCOME_NORM)
+    district_income_adj = p.get("income_ratio", 1.0)   # 구별 자산 수준 보정
+    experience_adj = experience * district_income_adj
+    risk_mult = _risk_multiplier(risk_score)
+    risk_classified = experience_adj * risk_mult
+    loaded = risk_classified * (1 + _LOADING_RATE)
     credible = loaded
     segment_mult = seg_a["mult"] * seg_b["mult"]
     segment_adjusted = credible * segment_mult
@@ -134,10 +224,12 @@ def calc_premium(district, seg_a_key, seg_b_key, income=50, selected_items=None)
                 item_addon += ci["limit"] * ci["damage_rate"] / 12
     total_with_items = segment_adjusted + item_addon
     monthly_income = income * 1_000_000 / 12
-    cap = monthly_income * 0.02
+    cap = monthly_income * _BURDEN_CAP_PCT
     final = min(total_with_items, cap) if cap > 0 else total_with_items
     return {
-        "pure": round(pure), "experience": round(experience), "risk_classified": round(risk_classified),
+        "pure": round(pure), "experience": round(experience),
+        "district_income_adj": district_income_adj, "experience_adj": round(experience_adj),
+        "risk_classified": round(risk_classified),
         "risk_mult": risk_mult, "loaded": round(loaded), "credible": round(credible),
         "segment_adjusted": round(segment_adjusted), "segment_mult": segment_mult, "item_addon": round(item_addon),
         "total_with_items": round(total_with_items), "final": round(final), "capped": total_with_items > cap if cap > 0 else False,
