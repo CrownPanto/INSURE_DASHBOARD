@@ -84,12 +84,6 @@ def show_page(session, selected_ym):
         "AVG_BASE_PREMIUM": "mean",
     }).reset_index()
 
-    # income_ratio 구별 자산 수준 보정: DB 집계값에 지역 소득 가중치 적용
-    _income_map = {k: v.get("income_ratio", 1.0) for k, v in utils.DISTRICT_PROFILES.items()}
-    agg_df["ADJUSTED_PREMIUM_MONTHLY"] = (
-        agg_df["GU_NAME"].map(_income_map).fillna(1.0) * agg_df["ADJUSTED_PREMIUM_MONTHLY"]
-    ).round(0)
-
     avg_premium = agg_df["ADJUSTED_PREMIUM_MONTHLY"].mean()
     avg_risk = agg_df["COMPOSITE_RISK_SCORE"].mean()
 
